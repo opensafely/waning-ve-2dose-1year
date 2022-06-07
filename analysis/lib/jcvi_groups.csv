@@ -1,0 +1,15 @@
+group,definition
+01,longres_group AND age_1 > 65
+02,age_1 >=80
+03,age_1 >=75
+04a,age_1 >=70
+04b,cev_group AND age_1 >=16
+05,age_1 >=65
+06,atrisk_group AND age_1 >=16
+07,age_1 >=60
+08,age_1 >=55
+09,age_1 >=50
+10,age_2 >=40
+11,age_2 >=30
+12,age_2 >=18
+99,DEFAULT
