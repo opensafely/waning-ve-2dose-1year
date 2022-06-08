@@ -31,7 +31,7 @@ data_vax_wide <- readr::read_rds(
   here::here("output", "data", "data_wide_vax_dates.rds")
   )
 
-# second dose and brand for eligible individuals
+cat("# second dose and brand for eligible individuals\n")
 data_2nd_dose <- data_eligible_b %>%
   left_join(data_vax_wide, by = "patient_id") %>%
   select(patient_id, jcvi_group, elig_date, region, 
@@ -88,14 +88,14 @@ generate_plot_data <- function(.data) {
   
 }
 
-# create list of data for each elig_date
+cat("# create list of data for each elig_date\n")
 data_vax_plot_list <- lapply(
   data_2nd_dose,
   function(x)
     try(generate_plot_data(x))
 )
 
-# bind list into one tibble
+cat("# bind list into one tibble\n")
 data_vax_plot <- bind_rows(
   data_vax_plot_list[sapply(data_vax_plot_list, is_tibble)]
   ) %>%
@@ -109,12 +109,19 @@ data_vax_plot <- bind_rows(
   mutate(n = sum(n_brand)) %>%
   ungroup()
 
+cat("# check data_vax_plot\n")
+data_vax_plot %>%
+  select(region, brand,jcvi_group) %>%
+  mutate(across(everything(), as.factor)) %>%
+  summary(maxsum=20)
+
+cat("# save data_vax_plot\n")
 readr::write_rds(data_vax_plot,
                  here::here("output", "second_vax_period", "data", "data_vax_plot.rds"),
                  compress = "gz")
 
-# second vaccination periods
-# number of days in cumulative sum
+cat("# second vaccination periods\n")
+cat("# number of days in cumulative sum\n")
 l <- 28 
 second_vax_period_dates <- data_vax_plot %>%
   distinct(jcvi_group, elig_date, region, dose_2, n) %>%
@@ -146,6 +153,7 @@ second_vax_period_dates <- data_vax_plot %>%
             .groups = "keep") %>%
   ungroup() 
 
+cat("# derive brand counts\n")
 brand_counts <- second_vax_period_dates %>%
   left_join(data_vax_plot,
             by = c("jcvi_group", "elig_date", "region")) %>%
@@ -159,12 +167,21 @@ brand_counts <- second_vax_period_dates %>%
   pivot_wider(
     names_from = brand, values_from = n, names_prefix = "n_"
   )
-  
+
+cat("# check brand_counts\n")
+names(brand_counts)
+nrow(brand_counts)
+
+cat("# derive second_vax_period_dates\n")  
 second_vax_period_dates <- second_vax_period_dates %>%
   left_join(brand_counts,
             by = c("jcvi_group", "elig_date", "region"))  %>%
   select(jcvi_group, elig_date, region, n_ChAdOx1, n_BNT162b2, cumulative_sum,
          start_of_period, end_of_period)
+
+cat("# check second_vax_period_dates\n")
+names(second_vax_period_dates)
+nrow(second_vax_period_dates)
 
 # save for plotting
 readr::write_rds(
