@@ -116,7 +116,7 @@ study=StudyDefinition(
     ## Oxford AZ - first record of an Oxford AZ vaccine 
     # NB *** may be patient's first COVID vaccine dose or their second if mixed types are given ***
     covid_vax_az_1_date=patients.with_tpp_vaccination_record(
-        product_name_matches="COVID-19 Vac AstraZeneca (ChAdOx1 S recomb) 5x10000000000 viral particles/0.5ml dose sol for inj MDV",
+        product_name_matches="COVID-19 AZD2816 AstraZeneca (ChAdOx1 nCOV-19) 3.5x10*9 viral particles/0.5ml dose sol for inj MDV",
         on_or_after=start_date,
         find_first_match_in_period=True,
         returning="date",
@@ -130,7 +130,7 @@ study=StudyDefinition(
         },
     ),
     covid_vax_az_2_date=patients.with_tpp_vaccination_record(
-        product_name_matches="COVID-19 Vac AstraZeneca (ChAdOx1 S recomb) 5x10000000000 viral particles/0.5ml dose sol for inj MDV",
+        product_name_matches="COVID-19 AZD2816 AstraZeneca (ChAdOx1 nCOV-19) 3.5x10*9 viral particles/0.5ml dose sol for inj MDV",
         on_or_after="covid_vax_az_1_date + 1 day",  
         find_first_match_in_period=True,
         returning="date",
@@ -144,7 +144,7 @@ study=StudyDefinition(
         },
     ),
     covid_vax_az_3_date=patients.with_tpp_vaccination_record(
-        product_name_matches="COVID-19 Vac AstraZeneca (ChAdOx1 S recomb) 5x10000000000 viral particles/0.5ml dose sol for inj MDV",
+        product_name_matches="COVID-19 AZD2816 AstraZeneca (ChAdOx1 nCOV-19) 3.5x10*9 viral particles/0.5ml dose sol for inj MDV",
         on_or_after="covid_vax_az_2_date + 1 day",  
         find_first_match_in_period=True,
         returning="date",
