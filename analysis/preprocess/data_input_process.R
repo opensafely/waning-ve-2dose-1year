@@ -138,6 +138,17 @@ data_vax <- local({
     ) %>%
     arrange(patient_id, date)
   
+  data_vax_disease <- data_processed_0 %>%
+    select(patient_id, matches("covid\\_vax\\_disease\\_\\d+\\_date")) %>%
+    pivot_longer(
+      cols = -patient_id,
+      names_to = c(NA, "vax_disease_index"),
+      names_pattern = "^(.*)_(\\d+)_date",
+      values_to = "date",
+      values_drop_na = TRUE
+    ) %>%
+    arrange(patient_id, date)
+  
   
   data_vax <- data_processed_0 %>% # to get the unvaccinated
     # filter(if_all(starts_with("covid_vax"), ~ is.na(.))) %>%
@@ -146,7 +157,8 @@ data_vax <- local({
     full_join(
       data_vax_pfizer %>%
         full_join(data_vax_az, by=c("patient_id", "date")) %>%
-        full_join(data_vax_moderna, by=c("patient_id", "date")),
+        full_join(data_vax_moderna, by=c("patient_id", "date")) %>%
+        full_join(data_vax_disease, by=c("patient_id", "date")),
       by = "patient_id"
     ) %>%
     mutate(
@@ -155,6 +167,7 @@ data_vax <- local({
         is.na(vax_az_index) & (!is.na(vax_pfizer_index)) & is.na(vax_moderna_index) ~ "pfizer",
         is.na(vax_az_index) & is.na(vax_pfizer_index) & (!is.na(vax_moderna_index)) ~ "moderna",
         (!is.na(vax_az_index)) + (!is.na(vax_pfizer_index)) + (!is.na(vax_moderna_index)) > 1 ~ "duplicate",
+        !is.na(vax_disease_index) ~ "unknown",
         TRUE ~ NA_character_
       )
     ) %>%

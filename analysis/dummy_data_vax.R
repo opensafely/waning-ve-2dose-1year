@@ -73,18 +73,20 @@ dummy_data_elig <- tibble(patient_id = 1:n) %>%
     conditions = elig_date_patterns$description) 
 
 # fix vaccine dates so that they have roughly correct distribution
+# fix vaccine dates so that they have roughly correct distribution
 dummy_data_vax <- dummy_data_elig %>%
   mutate(
     covid_vax_pfizer_1_date = as.Date(elig_date) + days(round(rnorm(nrow(.), mean = 10, sd = 3))),
     covid_vax_az_1_date = as.Date(elig_date) + days(round(rnorm(nrow(.), mean = 10, sd = 3))),
-    covid_vax_moderna_1_date = as.Date(elig_date) + days(round(rnorm(nrow(.), mean = 10, sd = 3)))) %>%
+    covid_vax_moderna_1_date = as.Date(elig_date) + days(round(rnorm(nrow(.), mean = 10, sd = 3))),
+    covid_vax_disease_1_date = as.Date(elig_date) + days(round(rnorm(nrow(.), mean = 10, sd = 3)))) %>%
   mutate(
     vaccine_1_type = sample(
-      x = c("pfizer", "az", "moderna", "none"), 
+      x = c("pfizer", "az", "moderna", "disease", "none"), 
       size = nrow(.),
       replace = TRUE,
-      prob = c(0.4, 0.4, 0.1, 0.1)
-      ),
+      prob = c(0.4, 0.4, 0.05, 0.05, 0.1)
+    ),
     missing_pfizer_2 = rbernoulli(nrow(.), p=0.05),
     missing_az_2 = rbernoulli(nrow(.), p=0.05),
     missing_moderna_2 = rbernoulli(nrow(.), p=0.05),
@@ -107,6 +109,11 @@ dummy_data_vax <- dummy_data_elig %>%
                   vaccine_1_type %in% "moderna",
                   .x,
                   NA_Date_))) %>%
+  mutate(across(covid_vax_disease_1_date, 
+                ~if_else(
+                  vaccine_1_type %in% "disease",
+                  .x,
+                  NA_Date_))) %>%
   mutate(across(matches("covid_vax_\\w+_1_date"),
                 ~ if_else(
                   vaccine_1_type %in% "none",
@@ -117,7 +124,7 @@ dummy_data_vax <- dummy_data_elig %>%
     covid_vax_pfizer_2_date = covid_vax_pfizer_1_date + days(round(rnorm(nrow(.), mean = 10*7, sd = 3))),
     covid_vax_az_2_date = covid_vax_az_1_date + days(round(rnorm(nrow(.), mean = 10*7, sd = 3))),
     covid_vax_moderna_2_date = covid_vax_moderna_1_date + days(round(rnorm(nrow(.), mean = 10*7, sd = 3))),
-    ) %>%
+  ) %>%
   mutate(across(covid_vax_pfizer_2_date, 
                 ~if_else(
                   missing_pfizer_2,
