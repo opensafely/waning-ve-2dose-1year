@@ -114,7 +114,7 @@ study=StudyDefinition(
     name = "covid_vax_az",
     index_date = "1900-01-01",
     n = 3,
-    product_name_matches="COVID-19 mRNA Vaccine Vaxzeveria 0.5ml inj multidose vials (AstraZeneca)"
+    product_name_matches="COVID-19 Vaccine Vaxzevria 0.5ml inj multidose vials (AstraZeneca)"
   ),
   
   # moderna
