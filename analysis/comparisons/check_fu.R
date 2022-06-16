@@ -108,21 +108,21 @@ for (s in levels(min_max$subgroup)) {
     xintercepts <- c(xintercepts, delta_start)
     names_xintercepts <- "Delta became\ndominant"
     n_mult <- c(n_mult, 0.75)
-    k_print <- c(k_print, 6)
+    k_print <- c(k_print, 12)
     index <- c(index, 1)
   }
   if (omicron_start <=  max_date) {
     xintercepts <- c(xintercepts, omicron_start)
     names_xintercepts <- c(names_xintercepts, "First cases of\nOmicron detected")
     n_mult <- c(n_mult, 0.75)
-    k_print <- c(k_print, 1)
+    k_print <- c(k_print, 11)
     index <- c(index, 2)
   }
   if (delta_end <=  max_date) {
     xintercepts <- c(xintercepts, delta_end)
     names_xintercepts <- c(names_xintercepts, "50% of cases\nOmicron")
     n_mult <- c(n_mult, 0.25)
-    k_print <- c(k_print, 1)
+    k_print <- c(k_print, 12)
     index <- c(index, 3)
   }
   names(xintercepts) <- names_xintercepts
