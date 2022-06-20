@@ -92,7 +92,8 @@ data_tte_wide <- data_tte %>%
 cat("split into BNT162b2, ChAdOx1 and unvax\n")
 # because it was failing on full dataset due to size when one row per person-day
 data_patients_list <- data_tte_wide %>% 
-  group_split(arm)
+  mutate(tmp_group = str_c(arm, k, sep="_")) %>%
+  group_split(tmp_group)
 
 data_tte_long_list <- list()
 for (i in seq_along(data_patients_list)) {
@@ -123,6 +124,9 @@ for (i in seq_along(data_patients_list)) {
     # round up to nearest 7
     # then divide by 1000 to keep the plot tidy (will add note to y-axis)
     mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
+  
+  cat("number of rows:\n")
+  print(nrow(data_tte_long_list[[i]]))
   
 }
 
