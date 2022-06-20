@@ -89,26 +89,45 @@ data_tte_wide <- data_tte %>%
   ) %>%
   select(-start, -end) 
 
-cat("every possible follow-up day for each individual\n")
-data_patients <- data_tte_wide %>% 
-  distinct(patient_id) %>%
-  uncount(weights = max(data_tte_wide$tstop)+1) %>%
-  mutate(time = rep(0:max(data_tte_wide$tstop), times = n_distinct(data_tte_wide$patient_id)))
+cat("split into BNT162b2, ChAdOx1 and unvax\n")
+# because it was failing on full dataset due to size when one row per person-day
+data_patients_list <- data_tte_wide %>% 
+  group_split(arm)
 
-cat("keep only follow-up days that are within start and end date for each individual\n")
-data_tte_long <- data_tte_wide %>%
-  left_join(
-    data_patients, by = "patient_id"
-  ) %>%
-  filter(tstart < time, time <= tstop) %>%
-  group_by(k, time) %>%
-  count() %>%
-  ungroup() %>%
-  mutate(date = min_date + days(time)) %>%
-  select(-time) %>%
-  # round up to nearest 7
-  # then divide by 1000 to keep the plot tidy (will add note to y-axis)
-  mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
+data_tte_long_list <- list()
+for (i in seq_along(data_patients_list)) {
+  
+  cat(glue("{i}:\n"))
+  cat("every possible follow-up day for each individual\n")
+  data_patients <- data_patients_list[[i]] %>%
+    distinct(patient_id) %>%
+    uncount(weights = max(data_tte_wide$tstop)+1) %>%
+    mutate(
+      time = rep(
+        0:max(data_tte_wide$tstop), 
+        times = n_distinct(data_patients_list[[i]]$patient_id)
+        )
+      )
+  
+  cat("keep only follow-up days that are within start and end date for each individual\n")
+  data_tte_long_list[[i]] <- data_tte_wide %>%
+    left_join(
+      data_patients, by = "patient_id"
+    ) %>%
+    filter(tstart < time, time <= tstop) %>%
+    group_by(k, time) %>%
+    count() %>%
+    ungroup() %>%
+    mutate(date = min_date + days(time)) %>%
+    select(-time) %>%
+    # round up to nearest 7
+    # then divide by 1000 to keep the plot tidy (will add note to y-axis)
+    mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
+  
+}
+
+cat("bind across i\n")
+data_tte_long <- bind_rows(data_tte_long_list)
 
 # save data
 write_csv(
@@ -141,7 +160,7 @@ if (omicron_start <=  max_date) {
 if (delta_end <=  max_date) {
   xintercepts <- c(xintercepts, delta_end)
   names_xintercepts <- c(names_xintercepts, "50% of cases\nOmicron")
-  n_mult <- c(n_mult, 0.25)
+  n_mult <- c(n_mult, 0.75)
   k_print <- c(k_print, 12)
   index <- c(index, 3)
 }
