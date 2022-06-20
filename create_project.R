@@ -23,7 +23,7 @@ study_parameters <-
     # start_date_pfizer = "2020-12-08",
     # start_date_az = "2021-01-04",
     # start_date_moderna = "2021-03-04",
-    end_date = lubridate::today(), # for study definition
+    end_date = "2022-06-07", # day the study definition was run
     end_date_model = "2022-03-01" # TBC based on availability of hospital data
   ) 
 
@@ -567,7 +567,7 @@ actions_list <- splice(
             needs = list("data_covariates_process"),
             moderately_sensitive = list(
               check_fu_plot = glue("output/tte/images/check_fu_{x}.png"),
-              check_fu_plot_data = glue("output/tte/images/check_fu_{x}.txt")
+              check_fu_plot_data = glue("output/tte/images/check_fu_{x}.csv")
             )
           )
       ),
