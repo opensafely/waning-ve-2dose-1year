@@ -220,7 +220,7 @@ actions:
     outputs:
       moderately_sensitive:
         check_fu_plot: output/tte/images/check_fu_1.png
-        check_fu_plot_data: output/tte/images/check_fu_1.txt
+        check_fu_plot_data: output/tte/images/check_fu_1.csv
 
   check_fu_2:
     run: r:latest analysis/comparisons/check_fu.R 2
@@ -229,7 +229,7 @@ actions:
     outputs:
       moderately_sensitive:
         check_fu_plot: output/tte/images/check_fu_2.png
-        check_fu_plot_data: output/tte/images/check_fu_2.txt
+        check_fu_plot_data: output/tte/images/check_fu_2.csv
 
   check_fu_3:
     run: r:latest analysis/comparisons/check_fu.R 3
@@ -238,7 +238,7 @@ actions:
     outputs:
       moderately_sensitive:
         check_fu_plot: output/tte/images/check_fu_3.png
-        check_fu_plot_data: output/tte/images/check_fu_3.txt
+        check_fu_plot_data: output/tte/images/check_fu_3.csv
 
   check_fu_4:
     run: r:latest analysis/comparisons/check_fu.R 4
@@ -247,7 +247,7 @@ actions:
     outputs:
       moderately_sensitive:
         check_fu_plot: output/tte/images/check_fu_4.png
-        check_fu_plot_data: output/tte/images/check_fu_4.txt
+        check_fu_plot_data: output/tte/images/check_fu_4.csv
 
   ## #################################### 
   ## apply models 
