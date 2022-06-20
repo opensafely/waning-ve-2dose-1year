@@ -23,6 +23,8 @@ study_parameters <- readr::read_rds(
   here::here("analysis", "lib", "study_parameters.rds"))
 K <- study_parameters$K
 
+print(study_parameters$end_date)
+
 # read subgroups
 subgroups <- readr::read_rds(
   here::here("analysis", "lib", "subgroups.rds"))
