@@ -3,12 +3,14 @@ library(glue)
 library(lubridate)
 library(RColorBrewer)
 
+cat("setup\n")
+
 ## import command-line arguments ----
 args <- commandArgs(trailingOnly=TRUE)
 
 if(length(args)==0){
   # use for interactive testing
-  subgroup_label <- 1
+  subgroup_label <- 1L
   
 } else{
   subgroup_label <- as.integer(args[[1]])
@@ -22,8 +24,6 @@ fs::dir_create(here::here("output", "tte", "images"))
 study_parameters <- readr::read_rds(
   here::here("analysis", "lib", "study_parameters.rds"))
 K <- study_parameters$K
-
-print(study_parameters$end_date)
 
 # read subgroups
 subgroups <- readr::read_rds(
@@ -39,7 +39,8 @@ occurs_after_start_date <- function(cov_date, index_date) {
 }
 
 ################################################################################
-# read and process data
+cat("read and process data\n")
+
 data_tte <- readr::read_rds(
   here::here("output", "data", "data_all.rds")) %>%
   select(patient_id, subgroup, arm, split, death_date, dereg_date, subsequent_vax_date,
@@ -68,21 +69,19 @@ data_tte <- readr::read_rds(
   mutate(across(k, factor, levels = 1:K))
 
 ################################################################################
-# derive plot data
+cat("derive plot data\n")
 
-# define variant dates
+cat("define variant dates\n")
 delta_start <- as.Date("2021-06-01")
 omicron_start <- as.Date("2021-12-01")
 delta_end <- as.Date("2021-12-15")
 
-col_palette <- brewer.pal(n = 3, name = "Dark2")
-
-# earliest and latest fu dates
+cat("earliest and latest fu dates\n")
 min_date <- min(data_tte$start)
 max_date <- max(data_tte$start)
 
-# prepare data
-# wide data with each individual's start and end date
+cat("prepare data\n")
+cat("wide data with each individual's start and end date\n")
 data_tte_wide <- data_tte %>%
   mutate(
     tstart = as.integer(start - min_date),
@@ -90,13 +89,13 @@ data_tte_wide <- data_tte %>%
   ) %>%
   select(-start, -end) 
 
-# every possible follow-up day for each individual
+cat("every possible follow-up day for each individual\n")
 data_patients <- data_tte_wide %>% 
   distinct(patient_id) %>%
   uncount(weights = max(data_tte_wide$tstop)+1) %>%
   mutate(time = rep(0:max(data_tte_wide$tstop), times = n_distinct(data_tte_wide$patient_id)))
 
-# keep only follow-up days that are within start and end date for each individual
+cat("keep only follow-up days that are within start and end date for each individual\n")
 data_tte_long <- data_tte_wide %>%
   left_join(
     data_patients, by = "patient_id"
@@ -118,7 +117,8 @@ write_csv(
 )
 
 ################################################################################
-# create plot
+cat("metadata and objects for plot\n")
+col_palette <- brewer.pal(n = 3, name = "Dark2")
 xintercepts <- Date()
 names_xintercepts <- character()
 n_mult <- numeric()
@@ -155,6 +155,7 @@ ann_text <- tibble(
   lab_col = col_palette[1:length(xintercepts)]
 )
 
+cat("create plot\n")
 p <- data_tte_long %>%
   ggplot(aes(x = date, y = n)) +
   geom_bar(stat = "identity", alpha = 0.5, width=1) +
