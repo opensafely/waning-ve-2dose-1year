@@ -82,34 +82,39 @@ min_date <- min(data_tte$start)
 max_date <- max(data_tte$start)
 
 # prepare data
-data_tte_long <- data_tte %>%
+# wide data with each individual's start and end date
+data_tte_wide <- data_tte %>%
   mutate(
     tstart = as.integer(start - min_date),
-    tstop =  as.integer(end - min_date)
+    tstop =  as.integer(end - min_date) 
   ) %>%
-  select(-start, -end) %>%
-  group_by(patient_id, k) %>%
-  nest() %>%
-  mutate(
-    date = map(data, ~.x$tstart:.x$tstop)
+  select(-start, -end) 
+
+# every possible follow-up day for each individual
+data_patients <- data_tte_wide %>% 
+  distinct(patient_id) %>%
+  uncount(weights = max(data_tte_wide$tstop)+1) %>%
+  mutate(time = rep(0:max(data_tte_wide$tstop), times = n_distinct(data_tte_wide$patient_id)))
+
+# keep only follow-up days that are within start and end date for each individual
+data_tte_long <- data_tte_wide %>%
+  left_join(
+    data_patients, by = "patient_id"
   ) %>%
-  unnest(cols = c(data, date)) %>%
-  ungroup() %>%
-  mutate(date = min_date + days(date)) %>%
-  group_by(k, date) %>%
+  filter(tstart < time, time <= tstop) %>%
+  group_by(k, time) %>%
   count() %>%
   ungroup() %>%
+  mutate(date = min_date + days(time)) %>%
+  select(-time) %>%
   # round up to nearest 7
-  # also divide by 1000 to keep the plot tidy (will add note to y-axis)
+  # then divide by 1000 to keep the plot tidy (will add note to y-axis)
   mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
 
-# save data for output checking
-capture.output(
-  data_tte_long %>%
-    mutate(across(n, ~.x*1000)) %>%
-    kableExtra::kable("pipe"),
-  file = here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.txt")),
-  append = FALSE
+# save data
+write_csv(
+  data_tte_long,
+  here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.csv"))
 )
 
 ################################################################################
@@ -165,7 +170,7 @@ p <- data_tte_long %>%
     aes(xintercept = date, colour = lab_col),
     linetype = "dashed") +
   labs(
-    x = "Date of follow-up (during 2021)", 
+    x = "Date of follow-up", 
     y = "Number of individuals followed up (x 1000)"
   ) +
   facet_grid(k~.) +
@@ -179,12 +184,12 @@ p <- data_tte_long %>%
   ) +
   scale_x_date(
     date_breaks = "1 month",
-    date_labels = "%d %b",
+    date_labels = "%d %b %y",
     limits = c(min_date - days(14), max_date + days(14))
   ) +
   theme_bw() +
   theme(
-    axis.text.x = element_text(angle = 45, vjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5),
     axis.title.x = element_text(
       size=10, 
       margin = margin(t = 10, r = 0, b = 0, l = 0)
@@ -197,8 +202,3 @@ ggsave(p,
        filename = here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.png")),
        width=15, height=20, units="cm")
   
-
-
-
-
-
