@@ -555,13 +555,23 @@ actions_list <- splice(
   
 
   comment("check distribution of follow-up time in relation to variant dates"),
-  action(
-    name = "check_fu",
-    run = "r:latest analysis/comparisons/check_fu.R",
-    needs = list("data_covariates_process"),
-    moderately_sensitive = list(
-      check_fu_plot = "output/tte/images/check_fu_*.png",
-      check_fu_plot_data = "output/tte/images/check_fu_*.txt"
+  splice(
+    unlist(
+      lapply(
+        seq_along(subgroups),
+        function(x)
+          action(
+            name = glue("check_fu_{x}"),
+            run = "r:latest analysis/comparisons/check_fu.R",
+            arguments = x,
+            needs = list("data_covariates_process"),
+            moderately_sensitive = list(
+              check_fu_plot = glue("output/tte/images/check_fu_{x}.png"),
+              check_fu_plot_data = glue("output/tte/images/check_fu_{x}.txt")
+            )
+          )
+      ),
+      recursive = FALSE
     )
   ),
   
