@@ -86,11 +86,19 @@ events_threshold <- 2
 # keep only periods with > 2 events in each arm
 events_per_period <- data_0 %>%
   group_by(k, arm) %>%
-  summarise(events = sum(status), .groups="keep") %>%
+  summarise(
+    events = sum(status), 
+    .groups="keep"
+    ) %>%
   ungroup(arm) %>%
-  summarise(min_events = min(events), .groups = "keep") %>%
+  summarise(
+    n = n(), # number of arms with events
+    min_events = min(events), # min event across arms
+    .groups = "keep") %>%
   ungroup() %>%
-  mutate(keep = min_events > events_threshold)
+  mutate(
+    keep = (min_events > events_threshold) & (n==2)
+    )
 
 keep_periods <- as.integer(events_per_period$k[events_per_period$keep])
 drop_periods <- as.integer(events_per_period$k[!events_per_period$keep])
@@ -111,94 +119,94 @@ for (kk in 1:K) {
     # only keep categorical covariates with > 2 events per level per arm
     
     ################################################################################
-    # tabulate events per level
-    cat("...split data by k and status...\n")
-    tbl_list <- data_1 %>%
-      select(k, status, all_of(vars)) %>%
-      select(-age) %>%
-      group_split(status)
-    
-    # names for each element in list
-    group_split_labels <- lapply(
-      tbl_list,
-      function(x) str_c(unique(x$k), unique(x$status))
-    ) %>% 
-      unlist()
-    
-    cat("...summarise number of events...\n")
-    # summarise the number of events by level of covariates (within comparisons)
-    tbltab_list <- tbl_list %>%
-      map(~.[,-c(1,2)]) %>%
-      map(
-        function(data){
-          map(data,
-              function(x) {
-                tab <- table(x)
-                tibble(.level = names(tab),
-                       n = as.vector(tab))
-              }) %>%
-            bind_rows(.id="variable")
-        }
-      )
-    
-    # apply names
-    names(tbltab_list) <- group_split_labels
-    
-    cat("...prepare table...\n")
-    tbltab <- bind_rows(
-      tbltab_list,
-      .id = "group"
-    ) %>%
-      mutate(
-        k = str_extract(group, "\\d"),
-        status = as.logical(str_remove(group, "\\d")))  %>%
-      select(-group) %>%
-      pivot_wider(
-        names_from = status,
-        values_from = n
-      ) %>%
-      pivot_wider(
-        names_from = k,
-        values_from = c("FALSE", "TRUE"),
-        names_glue = "period{k}_{.value}"
-      ) %>%
-      mutate(across(starts_with("period"), 
-                    ~ if_else(is.na(.x), 0L, .x))) %>% 
-      group_by(variable) %>%
-      mutate(across(starts_with("period"), redactor2)) %>% 
-      mutate(across(starts_with("period"), 
-                    ~ if_else(is.na(.x), "-", scales::comma(.x, accuracy = 1)))) %>% 
-      ungroup()
-    
-    cat("...format and save table...\n")
-    tbltab %>%
-      gt(
-        groupname_col="variable",
-        rowname_col = ".level"
-      ) %>%
-      tab_spanner_delim("_") %>%
-      tab_stubhead(label = "variable") %>%
-      opt_css(css = ".gt_stub { padding-left: 50px !important; }") %>%
-      tab_style(
-        style = list(
-          cell_fill(color = "lightcyan")
-        ),
-        locations = cells_body(
-          columns = ends_with("TRUE")
-        )
-      ) %>%
-      tab_style(
-        style = list(
-          cell_fill(color = "lightcyan")
-        ),
-        locations = cells_column_labels(
-          columns = ends_with("TRUE")
-        )
-      ) %>%
-      gtsave(
-        filename = glue("eventcheck_{comparison}_{subgroup_label}_{outcome}_{kk}_REDACTED.html"),
-        path = here::here("output", "preflight", "tables")
-      )
+    # # tabulate events per level
+    # cat("...split data by k and status...\n")
+    # tbl_list <- data_1 %>%
+    #   select(k, status, all_of(vars)) %>%
+    #   select(-age) %>%
+    #   group_split(status)
+    # 
+    # # names for each element in list
+    # group_split_labels <- lapply(
+    #   tbl_list,
+    #   function(x) str_c(unique(x$k), unique(x$status))
+    # ) %>% 
+    #   unlist()
+    # 
+    # cat("...summarise number of events...\n")
+    # # summarise the number of events by level of covariates (within comparisons)
+    # tbltab_list <- tbl_list %>%
+    #   map(~.[,-c(1,2)]) %>%
+    #   map(
+    #     function(data){
+    #       map(data,
+    #           function(x) {
+    #             tab <- table(x)
+    #             tibble(.level = names(tab),
+    #                    n = as.vector(tab))
+    #           }) %>%
+    #         bind_rows(.id="variable")
+    #     }
+    #   )
+    # 
+    # # apply names
+    # names(tbltab_list) <- group_split_labels
+    # 
+    # cat("...prepare table...\n")
+    # tbltab <- bind_rows(
+    #   tbltab_list,
+    #   .id = "group"
+    # ) %>%
+    #   mutate(
+    #     k = str_extract(group, "\\d"),
+    #     status = as.logical(str_remove(group, "\\d")))  %>%
+    #   select(-group) %>%
+    #   pivot_wider(
+    #     names_from = status,
+    #     values_from = n
+    #   ) %>%
+    #   pivot_wider(
+    #     names_from = k,
+    #     values_from = c("FALSE", "TRUE"),
+    #     names_glue = "period{k}_{.value}"
+    #   ) %>%
+    #   mutate(across(starts_with("period"), 
+    #                 ~ if_else(is.na(.x), 0L, .x))) %>% 
+    #   group_by(variable) %>%
+    #   mutate(across(starts_with("period"), redactor2)) %>% 
+    #   mutate(across(starts_with("period"), 
+    #                 ~ if_else(is.na(.x), "-", scales::comma(.x, accuracy = 1)))) %>% 
+    #   ungroup()
+    # 
+    # cat("...format and save table...\n")
+    # tbltab %>%
+    #   gt(
+    #     groupname_col="variable",
+    #     rowname_col = ".level"
+    #   ) %>%
+    #   tab_spanner_delim("_") %>%
+    #   tab_stubhead(label = "variable") %>%
+    #   opt_css(css = ".gt_stub { padding-left: 50px !important; }") %>%
+    #   tab_style(
+    #     style = list(
+    #       cell_fill(color = "lightcyan")
+    #     ),
+    #     locations = cells_body(
+    #       columns = ends_with("TRUE")
+    #     )
+    #   ) %>%
+    #   tab_style(
+    #     style = list(
+    #       cell_fill(color = "lightcyan")
+    #     ),
+    #     locations = cells_column_labels(
+    #       columns = ends_with("TRUE")
+    #     )
+    #   ) %>%
+    #   gtsave(
+    #     filename = glue("eventcheck_{comparison}_{subgroup_label}_{outcome}_{kk}_REDACTED.html"),
+    #     path = here::here("output", "preflight", "tables")
+    #   )
     
     
     ################################################################################
@@ -323,62 +331,64 @@ for (kk in 1:K) {
     
     ################################################################################
     # create age variables
-    if (str_detect(subgroup_label, "^2")) {
-      
-      # age and age^2 for subgroup 18-64 and vulnerable
-      data_4 <- data_3 %>%
-        mutate(
-          `age_18to64` = age,
-          `age_18to64_squared` = age * age
-        ) 
-      
-    } else {
-      
-      # separate age terms for each jcvi_group / elig_date
-      data_3_list <- data_3 %>%
-        group_split(jcvi_group, elig_date) %>%
-        as.list()
-      
-      for (i in seq_along(data_3_list)) {
-        
-        g <- unique(data_3_list[[i]]$jcvi_group)
-        j <- unique(data_3_list[[i]]$elig_date)
-        
-        if (g == "07" && j == as.Date("2021-02-22")) {
-          # no age variable needed as all same age in strata
-          data_3_list[[i]] <- data_3_list[[i]] 
-          
-        } else if (g == "02") { 
-          # create age and age^2 term for jcvi group 2 (80+)
-          data_3_list[[i]] <- data_3_list[[i]] %>%
-            mutate(
-              age_80plus = age,
-              age_80plus_squared =  age * age
-            )
-          
-        } else {
-          # for all others, just create age term
-          age_range <- data_3_list[[i]] %>%
-            summarise(min(age), max(age)) %>%
-            unlist() %>% unname() %>% 
-            str_c(., collapse = "to")
-          
-          data_3_list[[i]] <- data_3_list[[i]] %>%
-            mutate(!! sym(glue("age_{age_range}")) := age) 
-          
-        }
-      }
-      
-      data_4 <- bind_rows(data_3_list) 
-      
-    }
+    data_5 <- data_3 %>% mutate(age_2=age^2) %>% rename(age_1 = age)
     
-    data_5 <- data_4 %>%
-      select(-age) %>%
-      mutate(across(starts_with("age"),
-                    ~ if_else(is.na(.x),
-                              0,
-                              as.double(.x))))
+    # if (str_detect(subgroup_label, "^2")) {
+    #   
+    #   # age and age^2 for subgroup 18-64 and vulnerable
+    #   data_4 <- data_3 %>%
+    #     mutate(
+    #       `age_18to64` = age,
+    #       `age_18to64_squared` = age * age
+    #     ) 
+    #   
+    # } else {
+    #   
+    #   # separate age terms for each jcvi_group / elig_date
+    #   data_3_list <- data_3 %>%
+    #     group_split(jcvi_group, elig_date) %>%
+    #     as.list()
+    #   
+    #   for (i in seq_along(data_3_list)) {
+    #     
+    #     g <- unique(data_3_list[[i]]$jcvi_group)
+    #     j <- unique(data_3_list[[i]]$elig_date)
+    #     
+    #     if (g == "07" && j == as.Date("2021-02-22")) {
+    #       # no age variable needed as all same age in strata
+    #       data_3_list[[i]] <- data_3_list[[i]] 
+    #       
+    #     } else if (g == "02") { 
+    #       # create age and age^2 term for jcvi group 2 (80+)
+    #       data_3_list[[i]] <- data_3_list[[i]] %>%
+    #         mutate(
+    #           age_80plus = age,
+    #           age_80plus_squared =  age * age
+    #         )
+    #       
+    #     } else {
+    #       # for all others, just create age term
+    #       age_range <- data_3_list[[i]] %>%
+    #         summarise(min(age), max(age)) %>%
+    #         unlist() %>% unname() %>% 
+    #         str_c(., collapse = "to")
+    #       
+    #       data_3_list[[i]] <- data_3_list[[i]] %>%
+    #         mutate(!! sym(glue("age_{age_range}")) := age) 
+    #       
+    #     }
+    #   }
+    #   
+    #   data_4 <- bind_rows(data_3_list) 
+    #   
+    # }
+    # 
+    # data_5 <- data_4 %>%
+    #   select(-age) %>%
+    #   mutate(across(starts_with("age"),
+    #                 ~ if_else(is.na(.x),
+    #                           0,
+    #                           as.double(.x))))
     
     ################################################################################
     # define formulas
