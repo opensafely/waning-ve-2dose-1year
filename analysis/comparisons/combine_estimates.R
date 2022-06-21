@@ -48,10 +48,6 @@ readr::write_csv(
   event_counts_all,
   here::here("output", "release_objects", "event_counts_all.csv"))
 
-readr::write_csv(
-  event_counts_all %>% filter(str_detect(subgroup, "65|75")),
-  here::here("output", "release_objects", "event_counts_6575.csv"))
-
 ################################################################################
 # model estimates
 all_files <- list.files(path = here::here("output", "models_cox", "data"), 
@@ -65,11 +61,6 @@ model_tidy_list <- lapply(
   all_files,
   function(filename) {
     filename_split <- unlist(str_split(str_remove(filename, ".rds"), "_"))
-    if (length(filename_split) > 6) {
-      extra_group <- filename_split[which(str_detect(filename_split, "Female|Male|65|75"))]
-      filename_split <- filename_split[filename_split!=extra_group]
-      filename_split[4] <- str_c(filename_split[4], "_", extra_group)
-    }
     readr::read_rds(
       here::here("output", "models_cox", "data", filename)
     ) %>%
@@ -104,7 +95,3 @@ print(min(model_tidy_tibble$n_obs_model, na.rm=TRUE))
 readr::write_csv(
   model_tidy_tibble,
   here::here("output", "release_objects", "estimates_all.csv"))
-
-readr::write_csv(
-  model_tidy_tibble %>% filter(str_detect(subgroup, "65|75")),
-  here::here("output", "release_objects", "estimates_6575.csv"))
