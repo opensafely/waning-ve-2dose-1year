@@ -306,7 +306,7 @@ apply_model_fun <- function(
         model_input = glue("output/preflight/data/model_input_{comparison}_{subgroup_label}_{outcome}*.rds")
       ),
       moderately_sensitive = list(
-        eventcheck_table = glue("output/preflight/tables/eventcheck_{comparison}_{subgroup_label}_{outcome}*.html"),
+        # eventcheck_table = glue("output/preflight/tables/eventcheck_{comparison}_{subgroup_label}_{outcome}*.html"),
         preflight_report = glue("output/preflight/tables/preflight_report_{comparison}_{subgroup_label}_{outcome}*.txt")
       )
     ),
@@ -585,17 +585,12 @@ actions_list <- splice(
 
       function(x) {
         if (!(x %in% "BNT162b2")) {
-          subgroup_labels <- subgroup_labels[subgroups != "18-39 years"]
+          ys <- subgroup_labels[subgroups != "18-39 years"]
+        } else {
+          ys <- subgroup_labels
         }
         unlist(lapply(
-          unname(c(
-            unlist(lapply(
-              subgroup_labels, function(sub) 
-                sapply(c("", "_Female", "_Male"), 
-                       function(sex) glue("{sub}{sex}")
-                ))),
-            sapply(c("65", "75"), function(age_band) glue("1_{age_band}"))
-          )),
+          ys,
           function(y)
             splice(
             unlist(lapply(
@@ -635,14 +630,7 @@ actions_list <- splice(
             ys <- subgroup_labels
           }
           unlist(lapply(
-            unname(c(
-              unlist(lapply(
-                ys, function(sub) 
-                  sapply(c("", "_Female", "_Male"), 
-                         function(sex) glue("{sub}{sex}")
-                  ))),
-              sapply(c("65", "75"), function(age_band) glue("1_{age_band}"))
-            )),
+            ys,
             function(y)
               unlist(lapply(
                 unname(outcomes_model),
