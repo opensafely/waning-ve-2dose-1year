@@ -55,10 +55,17 @@ plot_check <- function(c) {
       ) 
   
   p <- data_plot %>%
-    mutate(colourvar = factor(
-      glue("{comparison} {model}"),
-      levels = colour_levs)) %>%
-    mutate(across(outcome, factor, levels = c("covidadmitted", "coviddeath", "postest", "noncoviddeath", "anytest"))) %>%
+    mutate(
+      colourvar = factor(
+        glue("{comparison} {model}"),
+        levels = colour_levs
+        )
+      ) %>%
+    mutate(across(outcome, 
+                  factor,
+                  levels = c("covidadmitted", "coviddeath", "postest", "noncoviddeath", "anytest")
+                  )) %>%
+    mutate(across(label, as.integer)) %>%
     ggplot(aes(
       x = label, 
       y = estimate,
