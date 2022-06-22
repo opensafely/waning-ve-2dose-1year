@@ -14,23 +14,9 @@ subgroup_labels <- seq_along(subgroups)
 
 ################################################################################
 cat("-- read estimates_all.csv --")
-estimates_all <- readr::read_csv(here::here("output", "release_objects", "estimates_6575.csv")) %>%
+estimates_all <- readr::read_csv(here::here("output", "release_objects", "estimates_all.csv")) %>%
   filter(variable == "k", label != "0") %>%
   mutate(across(c(estimate, conf.low, conf.high), exp)) %>%
-  mutate(
-    sex = case_when(
-      str_detect(subgroup, "Female") ~ "Female",
-      str_detect(subgroup, "Male") ~ "Male",
-      TRUE ~ "Both"
-    ),
-    age_band = as.integer(str_extract(subgroup, "\\d{2}$")),
-    age_band = case_when(
-      is.na(age_band) ~ "all",
-      age_band == 65 ~ "65-74",
-      age_band == 75 ~ "75+"
-    ),
-    subgroup = as.integer(str_extract(subgroup, "^\\d{1}"))
-    ) %>%
   mutate(across(subgroup, factor, levels = subgroup_labels, labels = subgroups)) 
   
 ################################################################################
@@ -58,36 +44,25 @@ names(palette_all) <- colour_levs
 
 ################################################################################
 # create function for plot_check
-plot_check <- function(s, c, a = "all") {
+plot_check <- function(c) {
   
-  cat(glue("-- comparison = {c}, sex = {str_c(s, collapse = \", \")}, age_band(s) = {str_c(a, collapse = \", \")} --"))
+  cat(glue("-- comparison = {c} --"))
   
   data_plot <- estimates_all %>%
     filter(
-      sex %in% s,
       comparison %in% c,
-      age_band %in% a
+      outcome != "covidemergency"
       ) 
-  
-  if (length(s) > 1 & length(a) == 1) {
-    data_plot <- data_plot %>% rename(shapevar = sex)
-  } else if (length(s) == 1 & length(a) > 1) {
-    data_plot <- data_plot %>% rename(shapevar = age_band)
-  } else {
-    stop("Only sex or age_band can have multiple values.")
-  }
-  
   
   p <- data_plot %>%
     mutate(colourvar = factor(
       glue("{comparison} {model}"),
       levels = colour_levs)) %>%
-    mutate(across(outcome, factor, levels = c("covidemergency", "covidadmitted", "coviddeath", "postest", "noncoviddeath", "anytest"))) %>%
+    mutate(across(outcome, factor, levels = c("covidadmitted", "coviddeath", "postest", "noncoviddeath", "anytest"))) %>%
     ggplot(aes(
       x = label, 
       y = estimate,
-      colour = colourvar,
-      shape = shapevar
+      colour = colourvar
     )) +
     geom_hline(aes(yintercept=1), colour='grey') +
     geom_linerange(aes(ymin = conf.low, ymax = conf.high), position = position_dodge(width = position_dodge_val)) +
@@ -143,20 +118,12 @@ plot_check <- function(s, c, a = "all") {
     ) 
   
   cat("-- save plot --")
-  c<-str_c(c, collapse = "_")
-  s<-str_c(s, collapse = "_")
-  a<-str_c(a, collapse = "_")
   ggsave(p,
-         filename = here::here("output", "models_cox", "images", glue("plot_check_{c}_{s}_{a}.svg")),
+         filename = here::here("output", "models_cox", "images", glue("plot_check_{c}.svg")),
          width=20, height=20, units="cm")
 }
 
 ################################################################################
-# try(plot_check(c = c("BNT162b2", "ChAdOx1"), s = "Both"))
-# try(plot_check(c = "both", s = "Both"))
-# try(plot_check(c = "BNT162b2", s = c("Male", "Female")))
-# try(plot_check(c = "ChAdOx1", s = c("Male", "Female")))
-# try(plot_check(c = "both", s = c("Male", "Female")))
-try(plot_check(c = "BNT162b2", s = "Both", a = c("65-74", "75+")))
-try(plot_check(c = "ChAdOx1", s = "Both", a = c("65-74", "75+")))
-try(plot_check(c = "both", s = "Both", a = c("65-74", "75+")))
+try(plot_check(c = "BNT162b2"))
+try(plot_check(c = "ChAdOx1"))
+try(plot_check(c = "both"))
