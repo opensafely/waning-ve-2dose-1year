@@ -123,36 +123,6 @@ for (i in seq_along(data_patients_list)) {
     # also divide by 1000 to keep the plot tidy (will add note to y-axis)
     mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
   
-  
-  # cat("every possible follow-up day for each individual\n")
-  # data_patients <- data_patients_list[[i]] %>%
-  #   distinct(patient_id) %>%
-  #   uncount(weights = max(data_tte_wide$tstop)+1) %>%
-  #   mutate(
-  #     time = rep(
-  #       0:max(data_tte_wide$tstop), 
-  #       times = n_distinct(data_patients_list[[i]]$patient_id)
-  #       )
-  #     )
-  # 
-  # cat("keep only follow-up days that are within start and end date for each individual\n")
-  # data_tte_long_list[[i]] <- data_tte_wide %>%
-  #   left_join(
-  #     data_patients, by = "patient_id"
-  #   ) %>%
-  #   filter(tstart < time, time <= tstop) %>%
-  #   group_by(k, time) %>%
-  #   count() %>%
-  #   ungroup() %>%
-  #   mutate(date = min_date + days(time)) %>%
-  #   select(-time) %>%
-  #   # round up to nearest 7
-  #   # then divide by 1000 to keep the plot tidy (will add note to y-axis)
-  #   mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
-  # 
-  # cat("number of rows:\n")
-  # print(nrow(data_tte_long_list[[i]]))
-  
 }
 
 cat("bind across i\n")
