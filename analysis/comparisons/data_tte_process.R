@@ -74,7 +74,7 @@ data <- data_all %>%
       ((k %% 2) == 0 & split == "even") |
       ((k %% 2) != 0 & split == "odd")
   ) %>%
-  select(patient_id, k, jcvi_group, arm, subgroup, sex, ends_with("date"))
+  select(patient_id, k, jcvi_group, arm, subgroup, ends_with("date"))
 
 ################################################################################
 # generates and saves data_tte and tabulates event counts 
@@ -144,13 +144,6 @@ derive_data_tte <- function(
   # subgroups in .data
   subgroup_current <- unique(as.character(.data$subgroup))
   subgroup_current_label <- subgroup_labels[subgroups == subgroup_current]
-  # sex in .data
-  sex_label <- unique(as.character(.data$sex))
-  if (length(sex_label)==1) subgroup_current_label <- glue("{subgroup_current_label}_{sex_label}")
-  if ("age_band" %in% names(.data)) {
-    age_label <- str_extract(unique(as.character(.data$age_band)), "\\d{2}")
-    subgroup_current_label <- glue("{subgroup_current_label}_{age_label}")
-  }
   
   # save data_tte
   readr::write_rds(
@@ -185,23 +178,7 @@ derive_data_tte <- function(
 
 table_events_list <- 
   lapply(
-    splice(
-      # 4 risk-based subgroups
-      as.list(data %>% group_split(subgroup)),
-      # additionally split by sex
-      as.list(data %>% group_split(subgroup, sex)),
-      # 65+ subgroup split into 65-74 and 75+
-      # based on age at eligiblity for 1st dose
-      # so split on JCVI group rather than age, otherwise may end up with
-      # small numbers of individuals in some strata 
-      # (i.e. those who turned 75 between eligibility for 1st dose and SVP)
-      as.list(data %>% 
-                filter(subgroup %in% "65+ years") %>%
-                mutate(age_band = factor(
-                  if_else(jcvi_group %in% c("02", "03"), "75+", "65-74"),
-                  levels = c("65-74", "75+"))) %>%
-                group_split(subgroup, age_band))
-      ),
+    as.list(data %>% group_split(subgroup)),
     function(y)
       lapply(
         outcomes,
