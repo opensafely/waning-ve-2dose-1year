@@ -10,15 +10,12 @@ args <- commandArgs(trailingOnly=TRUE)
 
 if(length(args)==0){
   # use for interactive testing
-  subgroup_label <- 1L
+  release_folder <- here::here("release20220622")
+  subgroup_label <- 4L
   
 } else{
   subgroup_label <- as.integer(args[[1]])
 }
-
-################################################################################
-# output directories
-fs::dir_create(here::here("output", "tte", "images"))
 
 ################################################################################
 study_parameters <- readr::read_rds(
@@ -29,110 +26,130 @@ K <- study_parameters$K
 subgroups <- readr::read_rds(
   here::here("analysis", "lib", "subgroups.rds"))
 
-################################################################################
-# redaction functions
-source(here::here("analysis", "functions", "redaction_functions.R"))
-
-# function to be applied in dplyr::filter
-occurs_after_start_date <- function(cov_date, index_date) {
-  is.na(cov_date) | index_date < cov_date
-}
-
-################################################################################
-cat("read and process data\n")
-
-data_tte <- readr::read_rds(
-  here::here("output", "data", "data_all.rds")) %>%
-  select(patient_id, subgroup, arm, split, death_date, dereg_date, subsequent_vax_date,
-         starts_with(c("start", "end"))) %>%
-  filter(subgroup %in% subgroups[subgroup_label]) %>%
-  pivot_longer(
-    cols = c(starts_with(c("start","end"))),
-    names_to = c(".value", "k"),
-    names_pattern = "(.*)_(.*)_date"
-    ) %>%
-  mutate(across(k, as.integer)) %>%
-  filter(
-    is.na(split) |
-      ((k %% 2) == 0 & split == "even") |
-      ((k %% 2) != 0 & split == "odd")
-  ) %>%
-  select(-split) %>%
-  filter_at(
-    vars(str_c(unique(c("subsequent_vax", "dereg", "death")), "_date")),
-    all_vars(occurs_after_start_date(cov_date = ., index_date = start))
-  ) %>%
-  filter(start <=  as.Date(study_parameters$end_date)) %>%
-  mutate(across(ends_with("date"), ~if_else(start <= .x & .x <= end, .x, as.Date(NA_character_)))) %>%
-  mutate(across(end, ~pmin(end, death_date, dereg_date, subsequent_vax_date, as.Date(study_parameters$end_date), na.rm = TRUE))) %>%
-  select(patient_id, subgroup, arm, k, start, end) %>%
-  mutate(across(k, factor, levels = 1:K))
-
-################################################################################
-cat("derive plot data\n")
-
 cat("define variant dates\n")
 delta_start <- as.Date("2021-06-01")
 omicron_start <- as.Date("2021-12-01")
 delta_end <- as.Date("2021-12-15")
 
-cat("earliest and latest fu dates\n")
-min_date <- min(data_tte$start)
-max_date <- max(data_tte$start)
-
-cat("prepare data\n")
-cat("wide data with each individual's start and end date\n")
-data_tte_wide <- data_tte %>%
-  mutate(
-    tstart = as.integer(start - min_date),
-    tstop =  as.integer(end - min_date) 
-  ) %>%
-  select(-start, -end) 
-
-cat("split into BNT162b2, ChAdOx1 and unvax\n")
-# because it was failing on full dataset due to size when one row per person-day
-data_patients_list <- data_tte_wide %>% 
-  mutate(tmp_group = str_c(arm, k, sep="_")) %>%
-  group_split(tmp_group)
-
-data_tte_long_list <- list()
-for (i in seq_along(data_patients_list)) {
+# if running locally read extracted data:
+if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
   
-  cat(glue("{i}:\n"))
+  if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
+  image_path <- file.path(release_folder, "images")
   
-  # prepare data
-  data_tte_long_list[[i]] <- data_patients_list[[i]] %>%
-    # filter(subgroup == s) %>%
-    # mutate(
-    #   tstart = as.integer(start - min_date),
-    #   tstop =  as.integer(end - min_date)
-    # ) %>%
-    # select(-start, -end) %>%
-    group_by(patient_id, k) %>%
-    nest() %>%
-    mutate(
-      date = map(data, ~.x$tstart:.x$tstop)
+  data_tte_long <- readr::read_csv(file.path(release_folder, glue("check_fu_{subgroup_label}.csv"))) %>%
+    mutate(across(k, factor, levels = 1:K))
+  
+  
+} else {
+  # otherwise derive the data
+  
+  ################################################################################
+  # output directories
+  image_path <- here::here("output", "tte", "images")
+  fs::dir_create(image_path)
+  
+  ################################################################################
+  # redaction functions
+  source(here::here("analysis", "functions", "redaction_functions.R"))
+  
+  # function to be applied in dplyr::filter
+  occurs_after_start_date <- function(cov_date, index_date) {
+    is.na(cov_date) | index_date < cov_date
+  }
+  
+  ################################################################################
+  cat("read and process data\n")
+  
+  data_tte <- readr::read_rds(
+    here::here("output", "data", "data_all.rds")) %>%
+    select(patient_id, subgroup, arm, split, death_date, dereg_date, subsequent_vax_date,
+           starts_with(c("start", "end"))) %>%
+    filter(subgroup %in% subgroups[subgroup_label]) %>%
+    pivot_longer(
+      cols = c(starts_with(c("start","end"))),
+      names_to = c(".value", "k"),
+      names_pattern = "(.*)_(.*)_date"
     ) %>%
-    unnest(cols = c(data, date)) %>%
-    ungroup() %>%
-    mutate(date = min_date + days(date)) %>%
-    group_by(k, date) %>%
-    count() %>%
-    ungroup() %>%
-    # round up to nearest 7
-    # also divide by 1000 to keep the plot tidy (will add note to y-axis)
-    mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
+    mutate(across(k, as.integer)) %>%
+    filter(
+      is.na(split) |
+        ((k %% 2) == 0 & split == "even") |
+        ((k %% 2) != 0 & split == "odd")
+    ) %>%
+    select(-split) %>%
+    filter_at(
+      vars(str_c(unique(c("subsequent_vax", "dereg", "death")), "_date")),
+      all_vars(occurs_after_start_date(cov_date = ., index_date = start))
+    ) %>%
+    filter(start <=  as.Date(study_parameters$end_date)) %>%
+    mutate(across(ends_with("date"), ~if_else(start <= .x & .x <= end, .x, as.Date(NA_character_)))) %>%
+    mutate(across(end, ~pmin(end, death_date, dereg_date, subsequent_vax_date, as.Date(study_parameters$end_date), na.rm = TRUE))) %>%
+    select(patient_id, subgroup, arm, k, start, end) %>%
+    mutate(across(k, factor, levels = 1:K))
+  
+  ################################################################################
+  cat("derive plot data\n")
+  
+  cat("earliest and latest fu dates\n")
+  min_date <- min(data_tte$start)
+  max_date <- max(data_tte$end)
+  
+  cat("prepare data\n")
+  cat("wide data with each individual's start and end date\n")
+  data_tte_wide <- data_tte %>%
+    mutate(
+      tstart = as.integer(start - min_date),
+      tstop =  as.integer(end - min_date) 
+    ) %>%
+    select(-start, -end) 
+  
+  cat("split into BNT162b2, ChAdOx1 and unvax\n")
+  # because it was failing on full dataset due to size when one row per person-day
+  data_patients_list <- data_tte_wide %>% 
+    mutate(tmp_group = str_c(arm, k, sep="_")) %>%
+    group_split(tmp_group)
+  
+  data_tte_long_list <- list()
+  for (i in seq_along(data_patients_list)) {
+    
+    cat(glue("{i}:\n"))
+    
+    # prepare data
+    data_tte_long_list[[i]] <- data_patients_list[[i]] %>%
+      # filter(subgroup == s) %>%
+      # mutate(
+      #   tstart = as.integer(start - min_date),
+      #   tstop =  as.integer(end - min_date)
+      # ) %>%
+      # select(-start, -end) %>%
+      group_by(patient_id, k) %>%
+      nest() %>%
+      mutate(
+        date = map(data, ~.x$tstart:.x$tstop)
+      ) %>%
+      unnest(cols = c(data, date)) %>%
+      ungroup() %>%
+      mutate(date = min_date + days(date)) %>%
+      group_by(k, date) %>%
+      count() %>%
+      ungroup() %>%
+      # round up to nearest 7
+      # also divide by 1000 to keep the plot tidy (will add note to y-axis)
+      mutate(across(n, ~ceiling_any(.x, to = 7)/1000)) 
+    
+  }
+  
+  cat("bind across i\n")
+  data_tte_long <- bind_rows(data_tte_long_list)
+  
+  # save data
+  write_csv(
+    data_tte_long,
+    here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.csv"))
+  )
   
 }
-
-cat("bind across i\n")
-data_tte_long <- bind_rows(data_tte_long_list)
-
-# save data
-write_csv(
-  data_tte_long,
-  here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.csv"))
-)
 
 ################################################################################
 cat("metadata and objects for plot\n")
@@ -142,6 +159,12 @@ names_xintercepts <- character()
 n_mult <- numeric()
 k_print <- integer()
 index <- integer()
+
+cat("earliest and latest fu dates\n")
+min_date <- min(data_tte_long$date)
+max_date <- max(data_tte_long$date)
+
+
 if (min_date <=  delta_start) {
   xintercepts <- c(xintercepts, delta_start)
   names_xintercepts <- "Delta became\ndominant"
@@ -218,6 +241,6 @@ p <- data_tte_long %>%
   )
 
 ggsave(p,
-       filename = here::here("output", "tte", "images", glue("check_fu_{subgroup_label}.png")),
+       filename = file.path(image_path, glue("check_fu_{subgroup_label}.png")),
        width=15, height=20, units="cm")
   
