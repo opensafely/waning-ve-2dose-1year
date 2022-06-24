@@ -26,7 +26,7 @@ subgroups_long_wrap <- str_wrap(subgroups_long, width = 25)
 if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
 
   if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
-  image_path <- here::here(release_folder)
+  image_path <- file.path(release_folder, "images")
 
   survtable_redacted <- readr::read_csv(
     here::here(release_folder, "survtable_redacted.csv")) %>%
