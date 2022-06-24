@@ -4,7 +4,9 @@ library(tidyverse)
 library(glue)
 
 ################################################################################
-fs::dir_create(here::here("output", "models_cox", "images"))
+if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
+
+fs::dir_create(file.path(release_folder, "images"))
 
 ################################################################################
 cat("-- read subgroups --")
@@ -14,7 +16,7 @@ subgroup_labels <- seq_along(subgroups)
 
 ################################################################################
 cat("-- read estimates_all.csv --")
-estimates_all <- readr::read_csv(here::here("output", "release_objects", "estimates_all.csv")) %>%
+estimates_all <- readr::read_csv(file.path(release_folder, "estimates_all.csv")) %>%
   filter(variable == "k", label != "0") %>%
   mutate(across(c(estimate, conf.low, conf.high), exp)) %>%
   mutate(across(subgroup, factor, levels = subgroup_labels, labels = subgroups)) 
@@ -52,7 +54,8 @@ plot_check <- function(c) {
     filter(
       comparison %in% c,
       outcome != "covidemergency"
-      ) 
+      ) %>%
+    droplevels()
   
   p <- data_plot %>%
     mutate(
@@ -77,6 +80,9 @@ plot_check <- function(c) {
       position = position_dodge(width = position_dodge_val)
     ) +
     facet_grid(outcome ~ subgroup)  +
+    scale_x_continuous(
+      breaks = seq(2,12,2)
+    ) +
     scale_y_log10(
       name = "HR",
       breaks = c(0.00, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10),
@@ -125,8 +131,12 @@ plot_check <- function(c) {
     ) 
   
   cat("-- save plot --")
+  # ggsave(p,
+  #        filename = here::here("output", "models_cox", "images", glue("plot_check_{c}.svg")),
+  #        width=20, height=20, units="cm")
+  
   ggsave(p,
-         filename = here::here("output", "models_cox", "images", glue("plot_check_{c}.svg")),
+         filename = file.path(release_folder, "images", glue("plot_check_{c}.svg")),
          width=20, height=20, units="cm")
 }
 
