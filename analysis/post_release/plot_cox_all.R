@@ -57,7 +57,24 @@ caption_str <- str_c("Earliest to latest follow-up dates are as follows: ",
                  collapse = "")
   
 # read estimates data
-estimates_all <- readr::read_csv(here::here(release_folder, "images", "estimates_all.csv")) 
+estimates_all <- readr::read_csv(here::here(release_folder, "estimates_all.csv")) 
+
+# cumulative incidence data
+survtable_redacted <- readr::read_csv(
+  here::here(release_folder, "survtable_redacted.csv")) %>%
+  mutate(across(subgroup,
+                ~ case_when(
+                  str_detect(.x, "65") ~ 1,
+                  str_detect(.x, "18-64") ~ 2,
+                  str_detect(.x, "40-64") ~ 3,
+                  str_detect(.x, "18-39") ~ 4,
+                  TRUE ~ NA_real_
+                ))) %>%
+  mutate(across(subgroup,
+                factor,
+                levels = seq_along(subgroups),
+                labels = str_wrap(subgroup_plot_labels, 25)
+  )) 
 
 ################################################################################
 # gg plot pallete
@@ -194,10 +211,16 @@ plot_vax <- plot_data %>%
     aes(y = estimate),
     position = position_dodge(width = position_dodge_val)
   ) +
-  facet_grid(outcome ~ subgroup, switch = "y", scales = "free", space = "free_x") +
+  facet_grid(
+    outcome ~ subgroup, 
+    switch = "y",
+    # scales = "free",
+    space = "free_x"
+    ) +
   scale_x_continuous(
     breaks = 1:12,
-    labels = weeks_since_2nd_vax
+    labels = NULL
+    # labels = weeks_since_2nd_vax
   ) +
   scale_y_log10(
     name = y_lab_adj,
@@ -212,8 +235,8 @@ plot_vax <- plot_data %>%
     )
   ) +
   labs(
-    x = x_lab,
-    caption = str_wrap(caption_str, width = 180)
+    x = NULL,x_lab,
+    # caption = str_wrap(caption_str, width = 180)
   ) +
   scale_fill_discrete(guide = "none") +
   scale_shape_manual(values = comparison_shapes[1:2], name = NULL) +
@@ -234,6 +257,7 @@ plot_vax <- plot_data %>%
     axis.title.y = element_text(size=10, margin = margin(t = 0, r = 10, b = 0, l = 0)),
     axis.text.x = element_text(size=8, angle=90, hjust=1),
     axis.text.y = element_text(size=8),
+    axis.ticks.x = element_blank(),
     
     panel.grid.minor.x = element_blank(),
     panel.grid.minor.y = element_blank(),
@@ -249,7 +273,7 @@ plot_vax <- plot_data %>%
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, face= "italic"),
     
-    legend.position = c(0.88, 0.14),
+    legend.position = "none",#c(0.88, 0.14),
     # big margins to cover up grid lines
     legend.margin = margin(t = 20, r = 12, b = 30, l = 10),
     legend.key.width = unit(2, 'cm'),
@@ -262,6 +286,91 @@ ggsave(plot_vax,
        filename = here::here(release_folder, "images", glue("hr_vax.png")),
        width=page_height, height=page_width, units="cm")
 
+# scale for x-axis
+x_breaks <- seq(3, 48, 4)
+x_labels <- as.character(x_breaks)
+# create plot
+plot_ci <- survtable_redacted %>%
+  mutate(y = str_wrap("Cumulative incidence of subsequent dose", 14)) %>%
+  ggplot(aes(x = time, y = c.inc, colour = arm)) +
+  geom_step(size=0.8) +
+  facet_grid(
+    y ~ subgroup,
+    switch = "y",
+    # scales = "free",
+    space = "free_x"
+    ) +
+  # scale_color_viridis_d(
+  #   name = "Subgroup"
+  # ) +
+  scale_x_continuous(
+    expand = c(0,0),
+    breaks = seq(4,50,4), # scale is time since start of period 1
+    labels = weeks_since_2nd_vax # label scale as time since second vax
+  ) +
+  scale_y_continuous(
+    name = " ",
+    oob = scales::oob_keep,
+    sec.axis = sec_axis(
+      ~.,
+      name=" ",
+      breaks = NULL
+    )
+  ) +
+  scale_colour_manual(
+    values = 
+  ) +
+  labs(
+    x = "Weeks since second dose",
+    # y = "Incidence of subsequent dose"
+  ) +
+  theme_bw() +
+  theme(
+    
+    panel.border = element_blank(),
+    axis.line.y = element_line(colour = "black"),
+    
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(
+      size=8,
+      angle = 90
+      ),
+    
+    axis.title.x = element_text(
+      size = 10, 
+      margin = margin(t = 20, r = 0, b = 10, l = 0)
+      ),
+    axis.title.y = element_text(size = 10, margin = margin(t = 0, r = 10, b = 0, l = 0)),
+    
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0),
+    strip.text.x = element_blank(),
+    strip.text = element_text(size=8),
+    
+    panel.spacing = unit(0.8, "lines"),
+    
+    plot.title = element_text(hjust = 0, size = 11),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0, face= "italic"),
+    plot.margin = unit(c(t = 0.5, r = 1.27, b = 0, l = 0.53), "cm"),
+    
+    legend.position = "none",
+    legend.key.size = unit(0.8, "cm")
+    
+  )
+
+library(cowplot)
+plot_grid(
+  plot_vax, plot_ci, 
+  nrow = 2, rel_heights = c(0.7,0.3), rel_widths = c(1,0.5),
+  labels = c("A", "B")
+)
+
+print(caption_str)
 
 # ggsave(plot_vax + theme(plot.margin = margin(2, 2, 2, 2, "cm")),
 #        filename = here::here(release_folder, "images", glue("hr_vax.pdf")),
