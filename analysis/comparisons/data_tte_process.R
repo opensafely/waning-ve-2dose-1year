@@ -106,14 +106,7 @@ derive_data_tte <- function(
       all_vars(occurs_after_start_date(cov_date = ., index_date = start_date))
     ) %>%
     # only keep periods for which start_date < end_date
-    filter(
-      start_date < as.Date(study_parameters$end_date) 
-    ) %>%
-    # if end_date > study_parameters$end_date, replace with study_parameters$end_date
-    mutate(across(end_date,
-                  ~ if_else(as.Date(study_parameters$end_date) < .x,
-                            as.Date(study_parameters$end_date),
-                            .x))) %>%
+    filter(start_date < end_date) %>%
     # only keep dates for censoring and outcome variables between start_date and end_date
     mutate(across(all_of(str_c(unique(c("dereg", outcomes)), "_date")),
                   ~ if_else(
