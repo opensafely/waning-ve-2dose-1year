@@ -82,9 +82,9 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
       vars(str_c(unique(c("subsequent_vax", "dereg", "death")), "_date")),
       all_vars(occurs_after_start_date(cov_date = ., index_date = start))
     ) %>%
-    filter(start <=  as.Date(study_parameters$end_date)) %>%
+    filter(start <  end) %>%
     mutate(across(ends_with("date"), ~if_else(start <= .x & .x <= end, .x, as.Date(NA_character_)))) %>%
-    mutate(across(end, ~pmin(end, death_date, dereg_date, subsequent_vax_date, as.Date(study_parameters$end_date), na.rm = TRUE))) %>%
+    mutate(across(end, ~pmin(end, death_date, dereg_date, subsequent_vax_date, na.rm = TRUE))) %>%
     select(patient_id, subgroup, arm, k, start, end) %>%
     mutate(across(k, factor, levels = 1:K))
   
@@ -117,12 +117,6 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
     
     # prepare data
     data_tte_long_list[[i]] <- data_patients_list[[i]] %>%
-      # filter(subgroup == s) %>%
-      # mutate(
-      #   tstart = as.integer(start - min_date),
-      #   tstop =  as.integer(end - min_date)
-      # ) %>%
-      # select(-start, -end) %>%
       group_by(patient_id, k) %>%
       nest() %>%
       mutate(
