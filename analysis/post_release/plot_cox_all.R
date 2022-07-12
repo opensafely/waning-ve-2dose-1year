@@ -438,7 +438,7 @@ plot_ci <- plot_ci_data %>%
     labels = NULL
   ) +
   scale_y_continuous(
-    name = "Millions of\npeople at-risk\n(shaded)",
+    name = "Millions of\npeople at risk\n(shaded)",
     limits = c(0,1),
     labels = format(seq(0,1,0.25), nsmall=2),
     oob = scales::oob_keep,
