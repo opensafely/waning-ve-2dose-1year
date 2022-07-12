@@ -71,14 +71,18 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
                   factor,
                   levels = subgroups,
                   labels = subgroups_long_wrap)) %>%
-    mutate(
-      # start date of comparison 1 
+    # mutate(
+    #   # start date of comparison 1 
+    #   start_fu_date = start_1_date,
+    #   # end date of final comparison or end of data availability
+    #   # end_fu_date = pmin(end_K_date, study_parameters$end_date) # already done in data_covariates_process
+    # ) %>%
+    # select(-start_1_date, -end_K_date) %>%
+    rename(
       start_fu_date = start_1_date,
-      # end date of final comparison or end of data availability
-      end_fu_date = pmin(end_K_date, study_parameters$end_date)
+      end_fu_date = end_K_date
     ) %>%
-    select(-start_1_date, -end_K_date) %>%
-    # remove if subsequent vaccine, death or dereg on or before start_of_period
+    # remove if subsequent vaccine, death or dereg on or before start_fu_date
     filter_at(
       all_of(c("subsequent_vax_date", "death_date", "dereg_date")),
       all_vars(no_evidence_of(., start_fu_date))) %>%
