@@ -62,8 +62,11 @@ data_all <- data_arm %>%
       mutate(across(contains("_date"), 
                     ~ floor_date(
                       as.Date(.x, format="%Y-%m-%d"),
-                      unit = "days"))),
-    by = "patient_id") %>%
+                      unit = "days"))) %>%
+      # replace end_k_date with end_date_model (end of available hospitalisation data)
+      mutate(across(starts_with("end_"), 
+                    ~pmin(.x, as.Date(study_parameters$end_date_model)))) 
+    , by = "patient_id") %>%
   # join to data_processed
   left_join(
     data_processed, by = "patient_id"
