@@ -564,7 +564,11 @@ actions_list <- splice(
             name = glue("check_fu_{x}"),
             run = "r:latest analysis/comparisons/check_fu.R",
             arguments = x,
-            needs = list("data_covariates_process"),
+            needs = list(
+              "data_covariates_process", 
+              "data_tte_process_BNT162b2", 
+              "data_tte_process_ChAdOx1"
+              ),
             moderately_sensitive = list(
               check_fu_plot = glue("output/tte/images/check_fu_{x}.png"),
               check_fu_plot_data = glue("output/tte/images/check_fu_{x}.csv")
