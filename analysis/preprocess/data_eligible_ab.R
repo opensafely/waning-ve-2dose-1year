@@ -72,16 +72,9 @@ eligibility_count <- eligibility_count %>%
     stage = "a-ex"
   )
 
+#### prior COVID exclusion criteria removed, but keep eligibility count so that flow.R still works
 # remove if evidence of covid infection on or before elig_date + 42 days
 # COVID admission
-data_eligible_a <- data_eligible_a %>%
-  filter(
-    ! (
-      !is.na(covid_any_date) &
-        (covid_any_date <= elig_date + days(42)) &
-        covid_event %in% "covidadmitted"
-    ))
-
 eligibility_count <- eligibility_count %>%
   add_row(
     description = "Samples with prior COVID admission removed.",
@@ -90,14 +83,6 @@ eligibility_count <- eligibility_count %>%
   )
 
 # positive COVID test
-data_eligible_a <- data_eligible_a %>%
-  filter(
-    ! (
-      !is.na(covid_any_date) &
-        (covid_any_date <= elig_date + days(42)) &
-        covid_event %in% "postest"
-    ))
-
 eligibility_count <- eligibility_count %>%
   add_row(
     description = "Samples with prior positive COVID test removed.",
@@ -106,14 +91,6 @@ eligibility_count <- eligibility_count %>%
   )
 
 # probable COVID 
-data_eligible_a <- data_eligible_a %>%
-  filter(
-    ! (
-      !is.na(covid_any_date) &
-        (covid_any_date <= elig_date + days(42)) &
-        covid_event %in% "probable"
-    ))
-
 eligibility_count <- eligibility_count %>%
   add_row(
     description = "Samples with prior probable COVID removed.",
