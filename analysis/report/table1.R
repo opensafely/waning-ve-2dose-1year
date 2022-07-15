@@ -101,6 +101,23 @@ eligibility_count <- eligibility_count %>%
         n
       ))
 
+# remove if episode_end_date (postest_date + weeks(12)) before start of comparison 1
+data_tables <- data_tables %>%
+  filter_at(
+    vars("episode_end_date"),
+    all_vars(no_evidence_of(., start_1_date))) 
+
+eligibility_count <- eligibility_count %>%
+  bind_rows(
+    data_tables %>% 
+      group_by(group) %>%
+      count() %>%
+      ungroup() %>%
+      transmute(
+        description = glue("{group}: after removing those who had a positive test >12 weeks ago"),
+        n
+      ))
+
 eligibility_count_p1 <- eligibility_count %>%
   mutate(group = str_extract(description, "\\w+:")) %>%
   arrange(group) %>%
@@ -345,9 +362,3 @@ for (i in c(seq_along(data_tables))) {
     )
   
 }
-
-
-
-
-
-
