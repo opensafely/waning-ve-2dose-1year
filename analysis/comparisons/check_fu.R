@@ -11,7 +11,7 @@ args <- commandArgs(trailingOnly=TRUE)
 if(length(args)==0){
   # use for interactive testing
   release_folder <- here::here("release20220622")
-  subgroup_label <- 4L
+  subgroup_label <- 1L
   
 } else{
   subgroup_label <- as.integer(args[[1]])
@@ -61,52 +61,44 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
   ################################################################################
   cat("read and process data\n")
   
-  data_tte <- readr::read_rds(
+  # read start dates
+  data_all <- readr::read_rds(
     here::here("output", "data", "data_all.rds")) %>%
-    select(patient_id, subgroup, arm, split, death_date, dereg_date, subsequent_vax_date,
-           starts_with(c("start", "end"))) %>%
-    filter(subgroup %in% subgroups[subgroup_label]) %>%
-    pivot_longer(
-      cols = c(starts_with(c("start","end"))),
-      names_to = c(".value", "k"),
-      names_pattern = "(.*)_(.*)_date"
-    ) %>%
-    mutate(across(k, as.integer)) %>%
-    filter(
-      is.na(split) |
-        ((k %% 2) == 0 & split == "even") |
-        ((k %% 2) != 0 & split == "odd")
-    ) %>%
-    select(-split) %>%
-    filter_at(
-      vars(str_c(unique(c("subsequent_vax", "dereg", "death")), "_date")),
-      all_vars(occurs_after_start_date(cov_date = ., index_date = start))
-    ) %>%
-    filter(start <  end) %>%
-    mutate(across(ends_with("date"), ~if_else(start <= .x & .x <= end, .x, as.Date(NA_character_)))) %>%
-    mutate(across(end, ~pmin(end, death_date, dereg_date, subsequent_vax_date, na.rm = TRUE))) %>%
-    select(patient_id, subgroup, arm, k, start, end) %>%
+    select(patient_id, start_1_date)
+  
+  # read tte data for BNT162b2 and unvax
+  data_tte <-  readr::read_rds(
+    here::here("output", "tte", "data", glue("data_tte_BNT162b2_{subgroup_label}_coviddeath.rds"))
+  )
+  
+  # if subgroups 1:3, read tte data for ChAdOx1
+  if (subgroup_label %in% 1:3) {
+    data_tte <- bind_rows(
+      data_tte,
+      readr::read_rds(
+        here::here("output", "tte", "data", glue("data_tte_ChAdOx1_{subgroup_label}_coviddeath.rds"))
+      ) %>%
+        filter(arm %in% "ChAdOx1")
+    )
+  }
+  
+  # going tte and start dates
+  data_tte <- data_tte %>%
+    left_join(data_all, by = "patient_id") %>%
     mutate(across(k, factor, levels = 1:K))
   
   ################################################################################
   cat("derive plot data\n")
   
   cat("earliest and latest fu dates\n")
-  min_date <- min(data_tte$start)
-  max_date <- max(data_tte$end)
-  
-  cat("prepare data\n")
-  cat("wide data with each individual's start and end date\n")
-  data_tte_wide <- data_tte %>%
-    mutate(
-      tstart = as.integer(start - min_date),
-      tstop =  as.integer(end - min_date) 
-    ) %>%
-    select(-start, -end) 
+  # calculate min_tstart just in case the person with tstart = 0 has been removed
+  min_tstart <- min(data_tte$tstart) 
+  # origin_date was used in data_tte to calculate tstart tstop so now use it back calculate dates
+  origin_date <- min(data_tte$start_1_date) - days(min_tstart) 
   
   cat("split into BNT162b2, ChAdOx1 and unvax\n")
   # because it was failing on full dataset due to size when one row per person-day
-  data_patients_list <- data_tte_wide %>% 
+  data_patients_list <- data_tte %>% 
     mutate(tmp_group = str_c(arm, k, sep="_")) %>%
     group_split(tmp_group)
   
@@ -124,7 +116,7 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
       ) %>%
       unnest(cols = c(data, date)) %>%
       ungroup() %>%
-      mutate(date = min_date + days(date)) %>%
+      mutate(date = origin_date + days(date)) %>%
       group_by(k, date) %>%
       count() %>%
       ungroup() %>%
@@ -221,7 +213,8 @@ p <- data_tte_long %>%
   scale_x_date(
     date_breaks = "1 month",
     date_labels = "%d %b %y",
-    limits = c(min_date - days(14), max_date + days(14))
+    limits = c(min_date, max_date)
+    # limits = c(min_date - days(14), max_date + days(14))
   ) +
   theme_bw() +
   theme(
