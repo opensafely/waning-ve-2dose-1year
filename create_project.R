@@ -24,7 +24,7 @@ study_parameters <-
     # start_date_az = "2021-01-04",
     # start_date_moderna = "2021-03-04",
     end_date = "2022-06-07", # day the study definition was run
-    end_date_model = "2022-03-01" # TBC based on availability of hospital data
+    end_date_model = "2022-03-31" # based on availability of hospital data
   ) 
 
 readr::write_rds(study_parameters, here::here("analysis", "lib", "study_parameters.rds"))
