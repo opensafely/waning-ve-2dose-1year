@@ -128,11 +128,11 @@ exclusion_e <- function(group) {
   data <- data %>%
     left_join(data_processed, by = "patient_id") %>%
     filter(
-      no_evidence_of(covid_any_date, svp_start_date - weeks(10))) 
+      no_evidence_of(covid_any_date, svp_start_date - weeks(12))) 
   
   eligibility_count_e <- tribble(
     ~description, ~n, 
-    glue("{group}: Evidence of COVID before SVP - 10 weeks."), n_distinct(data$patient_id)
+    glue("{group}: Evidence of COVID before SVP - 12 weeks."), n_distinct(data$patient_id)
   )
   
   # remove if in long-term residential home before start date
