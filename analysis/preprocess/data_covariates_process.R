@@ -39,10 +39,7 @@ data_processed <- readr::read_rds(
          jcvi_group, elig_date, region, 
          dereg_date, death_date,
          starts_with(unname(outcomes)),
-         any_of(unname(model_varlist$demographic))) %>%
-  # add episode end date for censoring follow-up when the outcome is:
-  # covidadmitted, coviddeath, noncoviddeath
-  mutate(episode_end_date = postest_date + weeks(12))
+         any_of(unname(model_varlist$demographic)))
 
 # vax data
 data_wide_vax_dates <- readRDS(
