@@ -57,7 +57,7 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
     here::here("output", "data", "data_all.rds")) %>%
     rename("end_K_date" = glue("end_{K}_date")) %>%
     select(patient_id, subgroup, arm, start_1_date, end_K_date, 
-           subsequent_vax_date, dereg_date, death_date, episode_end_date)
+           subsequent_vax_date, dereg_date, death_date)
   
   image_path <- here::here("output", "subsequent_vax", "images")
   
@@ -71,16 +71,23 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
                   factor,
                   levels = subgroups,
                   labels = subgroups_long_wrap)) %>%
+    # mutate(
+    #   # start date of comparison 1 
+    #   start_fu_date = start_1_date,
+    #   # end date of final comparison or end of data availability
+    #   # end_fu_date = pmin(end_K_date, study_parameters$end_date) # already done in data_covariates_process
+    # ) %>%
+    # select(-start_1_date, -end_K_date) %>%
     rename(
       start_fu_date = start_1_date,
       end_fu_date = end_K_date
     ) %>%
     # remove if subsequent vaccine, death or dereg on or before start_fu_date
     filter_at(
-      all_of(c("subsequent_vax_date", "death_date", "dereg_date", "episode_end_date")),
+      all_of(c("subsequent_vax_date", "death_date", "dereg_date")),
       all_vars(no_evidence_of(., start_fu_date))) %>%
     group_by(start_fu_date) %>%
-    mutate(across(c(end_fu_date, subsequent_vax_date, death_date, dereg_date, episode_end_date),
+    mutate(across(c(end_fu_date, subsequent_vax_date, death_date, dereg_date),
                   # time in weeks between start_fu_date and event
                   ~ as.integer(.x - start_fu_date)/7)) %>%
     ungroup() %>%
@@ -88,7 +95,7 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
     rename_at(vars(ends_with("_date")),
               ~ str_remove(.x, "_date")) %>%
     mutate(
-      tte = pmin(subsequent_vax, dereg, death, episode_end, end_fu, na.rm = TRUE),
+      tte = pmin(subsequent_vax, dereg, death, end_fu, na.rm = TRUE),
       status = if_else(
         # because subsequent_vax must occur before death and dereg if occuring on same day
         !is.na(subsequent_vax) & subsequent_vax == tte,
