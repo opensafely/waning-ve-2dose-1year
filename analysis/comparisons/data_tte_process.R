@@ -74,7 +74,7 @@ data <- data_all %>%
       ((k %% 2) == 0 & split == "even") |
       ((k %% 2) != 0 & split == "odd")
   ) %>%
-  select(patient_id, k, jcvi_group, arm, subgroup, ends_with("date")) 
+  select(patient_id, k, jcvi_group, arm, subgroup, ends_with("date"))
 
 ################################################################################
 # generates and saves data_tte and tabulates event counts 
@@ -100,21 +100,15 @@ derive_data_tte <- function(
   }
   
   data_tte <- .data %>%
-    # exclude if subsequent_vax, death, dereg, episode_end_date or outcome_exclude occurred before start of period
+    # exclude if subsequent_vax, death, dereg or outcome_exclude occurred before start of period
     filter_at(
-      vars(
-        str_c(
-          unique(
-            c("subsequent_vax", "dereg", "coviddeath", "noncoviddeath", "episode_end", outcome_exclude)
-            ), 
-          "_date")
-        ),
+      vars(str_c(unique(c("subsequent_vax", "dereg", "coviddeath", "noncoviddeath", outcome_exclude)), "_date")),
       all_vars(occurs_after_start_date(cov_date = ., index_date = start_date))
     ) %>%
     # only keep periods for which start_date < end_date
     filter(start_date < end_date) %>%
     # only keep dates for censoring and outcome variables between start_date and end_date
-    mutate(across(all_of(str_c(unique(c("dereg", "episode_end", outcomes)), "_date")),
+    mutate(across(all_of(str_c(unique(c("dereg", outcomes)), "_date")),
                   ~ if_else(
                     !is.na(.x) & (start_date < .x) & (.x <= end_date),
                     .x,
@@ -127,7 +121,7 @@ derive_data_tte <- function(
               ~ str_remove(.x, "_date")) %>%
     mutate(
       # censor follow-up time at first of the following:
-      tte = pmin(!! sym(outcome), dereg, coviddeath, noncoviddeath, episode_end, end, na.rm = TRUE),
+      tte = pmin(!! sym(outcome), dereg, coviddeath, noncoviddeath, end, na.rm = TRUE),
       status = if_else(
         !is.na(!! sym(outcome)) & !! sym(outcome) == tte,
         TRUE,
