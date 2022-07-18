@@ -70,7 +70,7 @@ estimates_all <- readr::read_csv(file.path(release_folder, "estimates_all.csv"))
 
 # cumulative incidence data
 survtable_redacted <- readr::read_csv(
-  here::here(release_folder, "survtable_redacted.csv")) %>%
+  (release_folder, "survtable_redacted.csv")) %>%
   mutate(across(subgroup,
                 ~ case_when(
                   str_detect(.x, "65") ~ 1,
@@ -526,6 +526,6 @@ ggsave(plot_combined,
        width=page_height, height=page_width, units="cm")
 
 # ggsave(plot_vax + theme(plot.margin = margin(2, 2, 2, 2, "cm")),
-#        filename = here::here(release_folder, "images", glue("hr_vax.pdf")),
+#        filename = (release_folder, "images", glue("hr_vax.pdf")),
 #        width=page_height, height=page_width, units="cm")
 
