@@ -76,6 +76,10 @@ model_tidy_list <- lapply(
 model_tidy_tibble <- bind_rows(
   model_tidy_list[sapply(model_tidy_list, function(x) is_tibble(x))]
 ) %>%
+  filter(
+    outcome != "covidemergency",
+    comparison != "both"
+    ) %>%
   mutate(across(c(estimate, conf.low, conf.high), round, 5)) %>%
   mutate(across(model, 
                 factor, levels = 1:2, labels = c("unadjusted", "adjusted"))) %>%

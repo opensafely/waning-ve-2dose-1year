@@ -212,6 +212,8 @@ readr::write_rds(
   here::here("analysis", "lib", "comparisons.rds")
 )
 
+comparisons <- comparisons[-3]
+
 # ################################################################################
 # # create bash script for generating study definitions from template
 # create_study_definitions <- 
