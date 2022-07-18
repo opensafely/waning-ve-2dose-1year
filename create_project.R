@@ -205,6 +205,9 @@ readr::write_rds(
   here::here("analysis", "lib", "outcomes_model.rds")
 )
 
+outcomes <- outcomes[-4]
+outcomes_model <- outcomes
+
 ################################################################################
 comparisons <- c("BNT162b2", "ChAdOx1", "both")
 readr::write_rds(
@@ -651,51 +654,32 @@ actions_list <- splice(
   ),
   
   comment("####################################",
-          "plot to check estimates", 
+          "tables for appendix", 
           "####################################"),
   action(
-    name = "plot_check",
-    run = "r:latest analysis/comparisons/plot_cox_check.R",
+    name = "appendix_table",
+    run = "r:latest analysis/post_release/appendix_table.R",
     needs = list(
       "combine_estimates"
       ),
     moderately_sensitive = list(
-      plot_check = "output/models_cox/images/plot_check*.svg"
+      plot_check = "output/release_objects/appendix_table*.csv"
     )
   ),
   
   comment("####################################",
-          "plot to check coefs", 
+          "plot for manuscript", 
           "####################################"),
   action(
-    name = "plot_check_coefs",
-    run = "r:latest analysis/comparisons/plot_coefs.R",
+    name = "plot_cox_all",
+    run = "r:latest analysis/post_release/plot_cox_all.R",
     needs = list(
       "combine_estimates"
     ),
     moderately_sensitive = list(
-      plot_coefs = "output/models_cox/images/coefs*.png"
+      hr_vax_ci = "output/release_objects/hr_vax_ci.png"
     )
-  )#,
-  
-  # comment("####################################",
-  #         "move objects for release",
-  #         "####################################"),
-  # action(
-  #   name = "release_objects",
-  #   run = "r:latest analysis/release_objects.R",
-  #   needs = list(
-  #     "plot_2nd_vax_dates",
-  #     "data_min_max_fu",
-  #     "plot_cumulative_incidence",
-  #     "table1",
-  #     "combine_estimates"
-  #   ),
-  #   moderately_sensitive = list(
-  #     txt = "output/files_for_release.txt",
-  #     csv = "output/release_objects/*/*.csv"
-  #   )
-  # )
+  )
   
 )
 
