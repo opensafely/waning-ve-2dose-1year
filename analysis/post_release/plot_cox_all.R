@@ -70,7 +70,7 @@ estimates_all <- readr::read_csv(file.path(release_folder, "estimates_all.csv"))
 
 # cumulative incidence data
 survtable_redacted <- readr::read_csv(
-  (release_folder, "survtable_redacted.csv")) %>%
+  file.path(release_folder, "survtable_redacted.csv")) %>%
   mutate(across(subgroup,
                 ~ case_when(
                   str_detect(.x, "65") ~ 1,
