@@ -1338,5 +1338,5 @@ actions:
     - check_fu_4
     outputs:
       moderately_sensitive:
-        hr_vax_ci: output/release_objects/hr_vax_ci.png
+        hr_vax_ci: output/release_objects/images/hr_vax_ci.png
 
