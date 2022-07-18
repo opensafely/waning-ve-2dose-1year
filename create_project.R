@@ -681,7 +681,7 @@ actions_list <- splice(
       lapply(1:4, function(x) glue("check_fu_{x}"))
     ),
     moderately_sensitive = list(
-      hr_vax_ci = "output/release_objects/hr_vax_ci.png"
+      hr_vax_ci = "output/release_objects/images/hr_vax_ci.png"
     )
   )
   
