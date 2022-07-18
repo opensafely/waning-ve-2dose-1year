@@ -152,7 +152,7 @@ appendix_table_docx <- function(s,o) {
     
     readr::write_csv(
       data_table,
-      file = file.path(release_folder, glue("appendix_table_{s}_{o}.csv"))
+      file.path(release_folder, glue("appendix_table_{s}_{o}.csv"))
     )
     
   }
