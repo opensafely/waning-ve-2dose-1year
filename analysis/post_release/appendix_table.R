@@ -1,9 +1,8 @@
 library(tidyverse)
 library(glue)
-library(flextable)
-library(officer)
 
-# define release folder
+cat("create and define release folder")
+fs::dir_create(here::here("output", "release_objects"))
 if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
 
 # read subgroups
@@ -23,7 +22,7 @@ names(outcomes) <- new_names
 
 outcomes_order <- c(2,3,1,4)
 
-# event counts
+cat("read event counts data")
 event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv")) %>%
   mutate(across(subgroup, as.integer)) %>%
   filter(!is.na(subgroup)) %>%
@@ -33,7 +32,7 @@ event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv
     values_from = c(n, events)
   )
 
-# read estimates data
+cat("read estimates data")
 estimates_k <- readr::read_csv(here::here(release_folder, "estimates_all.csv")) %>%
   filter(variable == "k", !reference_row) %>%
   mutate(across(c("estimate", "conf.low", "conf.high"),
@@ -92,82 +91,93 @@ appendix_table_docx <- function(s,o) {
       ) 
   }
   
-  names_data_table <- names(data_table)
-  # first header row
-  table_colnames_1 <- str_remove(names_data_table, "n_|events_|unadjusted_|adjusted_")
-  table_colnames_1 <- str_replace(table_colnames_1, "unvax", "Unvaccinated")
-  table_colnames_1[1] <- ""
-  table_colnames_1_unique <- unique(table_colnames_1)
-  table_colnames_1_length <- sapply(
-    lapply(table_colnames_1_unique, function(x) table_colnames_1 == x),
-    sum
-  )
-  
-  names(table_colnames_1) <- names_data_table
-  # second header row
-  table_colnames_2 <- str_remove(names_data_table, "_unvax|_BNT162b2|_ChAdOx1")
-  table_colnames_2 <- str_replace(table_colnames_2, "adjusted", "adjusted HR")
-  names(table_colnames_2) <- names_data_table
-  
-  cell_width <- vector(mode = "integer", length = length(table_colnames_2))
-  cell_width[table_colnames_2 %in% "k"] <- 2L
-  cell_width[table_colnames_2 %in% c("n", "events")] <- 2L
-  cell_width[table_colnames_2 %in% c("unadjusted HR", "adjusted HR")] <- 3L
-  
-  border <- fp_border()
-  border_j <- c("k", "events_unvax") 
-  if (s %in% 1:2) border_j[3] <- "adjusted_BNT162b2"
-  
-  flextable_out <- data_table %>%
-    flextable() %>%
-    set_header_labels(
-      values = as.list(table_colnames_2)
-    ) %>%
-    add_header_row(
-      values = table_colnames_1_unique,
-      colwidths = table_colnames_1_length
-    ) %>%
-    align(i=1, align="left",part="header") %>%
-    width(j=1:ncol(data_table), width = cell_width, unit = "cm") %>%
-    border_remove() %>%
-    hline(i = 1:2, border = border, part = "header") %>%
-    vline(j = border_j, border = border, part = "all") %>%
-    fontsize(size = 8, part = "all") %>%
-    # theme_booktabs() %>%
-    padding(
-      padding.top = 1,
-      padding.bottom = 1,
-      part = "all"
-    ) %>%
-    set_caption(
-      caption = glue("Counts and hazard ratios (HR) for {outcome_long} the {subgroup_long} subgroup"),
-      autonum = autonum
+  if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
+    
+    names_data_table <- names(data_table)
+    # first header row
+    table_colnames_1 <- str_remove(names_data_table, "n_|events_|unadjusted_|adjusted_")
+    table_colnames_1 <- str_replace(table_colnames_1, "unvax", "Unvaccinated")
+    table_colnames_1[1] <- ""
+    table_colnames_1_unique <- unique(table_colnames_1)
+    table_colnames_1_length <- sapply(
+      lapply(table_colnames_1_unique, function(x) table_colnames_1 == x),
+      sum
     )
-  
-  doc <- body_add_flextable(doc, value = flextable_out, split = FALSE)  %>%
-    body_add_par(value = " ", style = NULL, pos = "after") # add blank line
-  
-  readr::write_csv(
-    data_table,
-    file = here::here(release_folder, glue("appendix_table_{s}_{o}.csv"))
-  )
+    
+    names(table_colnames_1) <- names_data_table
+    # second header row
+    table_colnames_2 <- str_remove(names_data_table, "_unvax|_BNT162b2|_ChAdOx1")
+    table_colnames_2 <- str_replace(table_colnames_2, "adjusted", "adjusted HR")
+    names(table_colnames_2) <- names_data_table
+    
+    cell_width <- vector(mode = "integer", length = length(table_colnames_2))
+    cell_width[table_colnames_2 %in% "k"] <- 2L
+    cell_width[table_colnames_2 %in% c("n", "events")] <- 2L
+    cell_width[table_colnames_2 %in% c("unadjusted HR", "adjusted HR")] <- 3L
+    
+    border <- officer::fp_border()
+    border_j <- c("k", "events_unvax") 
+    if (s %in% 1:2) border_j[3] <- "adjusted_BNT162b2"
+    
+    flextable_out <- data_table %>%
+      flextable::flextable() %>%
+      flextable::set_header_labels(
+        values = as.list(table_colnames_2)
+      ) %>%
+      flextable::add_header_row(
+        values = table_colnames_1_unique,
+        colwidths = table_colnames_1_length
+      ) %>%
+      flextable::align(i=1, align="left",part="header") %>%
+      flextable::width(j=1:ncol(data_table), width = cell_width, unit = "cm") %>%
+      flextable::border_remove() %>%
+      flextable::hline(i = 1:2, border = border, part = "header") %>%
+      flextable::vline(j = border_j, border = border, part = "all") %>%
+      flextable::fontsize(size = 8, part = "all") %>%
+      # theme_booktabs() %>%
+      flextable::padding(
+        padding.top = 1,
+        padding.bottom = 1,
+        part = "all"
+      ) %>%
+      flextable::set_caption(
+        caption = glue("Counts and hazard ratios (HR) for {outcome_long} the {subgroup_long} subgroup"),
+        autonum = autonum
+      )
+    
+    doc <- flextable::body_add_flextable(doc, value = flextable_out, split = FALSE)  %>%
+      officer::body_add_par(value = " ", style = NULL, pos = "after") # add blank line
+    
+  } else {
+    
+    readr::write_csv(
+      data_table,
+      file = here::here(release_folder, glue("appendix_table_{s}_{o}.csv"))
+    )
+    
+  }
   
 }
 
-autonum <- run_autonum(
-  seq_id = "table",
-  pre_label = "Supplementary Table ",
-  post_label = ": ",
-  bkm = NULL,
-  bkm_all = FALSE,
-  prop = NULL,
-  start_at = NULL,
-  tnd = 0,
-  tns = "-"
-)
+if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
+  
+  autonum <- officer::run_autonum(
+    seq_id = "table",
+    pre_label = "Supplementary Table ",
+    post_label = ": ",
+    bkm = NULL,
+    bkm_all = FALSE,
+    prop = NULL,
+    start_at = NULL,
+    tnd = 0,
+    tns = "-"
+  )
+  
+  doc <- officer::read_docx() 
+}
 
-doc <- read_docx() 
 
+cat("apply tables function")
 for (s in 1:4) {
   for (o in outcomes[outcomes_order]) {
     
@@ -176,7 +186,10 @@ for (s in 1:4) {
   }
 }
 
-doc <- body_end_section_landscape(doc)
+if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
+  doc <- officer::body_end_section_landscape(doc)
+  doc <- print(doc, target = here::here(release_folder, "appendix_table.docx"))
+}
 
-doc <- print(doc, target = here::here(release_folder, "appendix_table.docx"))
+
 
