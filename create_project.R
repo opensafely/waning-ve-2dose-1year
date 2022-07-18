@@ -677,6 +677,7 @@ actions_list <- splice(
     run = "r:latest analysis/post_release/plot_cox_all.R",
     needs = splice(
       "combine_estimates",
+      "plot_cumulative_incidence",
       lapply(1:4, function(x) glue("check_fu_{x}"))
     ),
     moderately_sensitive = list(

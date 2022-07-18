@@ -1331,6 +1331,7 @@ actions:
     run: r:latest analysis/post_release/plot_cox_all.R
     needs:
     - combine_estimates
+    - plot_cumulative_incidence
     - check_fu_1
     - check_fu_2
     - check_fu_3
