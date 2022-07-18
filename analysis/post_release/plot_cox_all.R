@@ -41,10 +41,17 @@ comparisons <- c("BNT162b2", "ChAdOx1", "both")
 
 ################################################################################
 # min and max follow-up dates per subgroup
+
+if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
+  check_fu_path <- release_folder
+} else {
+  check_fu_path <- "output/tte/images"
+}
+
 min_max_fu_dates <- bind_rows(lapply(
   1:4,
   function(x)
-    readr::read_csv(file.path(release_folder, glue("check_fu_{x}.csv"))) %>%
+    readr::read_csv(file.path(check_fu_path, glue("check_fu_{x}.csv"))) %>%
     summarise(across(date, list(min = min, max = max))) %>%
     mutate(subgroup = subgroups[x])
 )) %>%
