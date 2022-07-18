@@ -10,6 +10,7 @@ library(glue)
 library(cowplot)
 
 ################################################################################
+
 if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
 
 fs::dir_create(file.path(release_folder, "images"))
