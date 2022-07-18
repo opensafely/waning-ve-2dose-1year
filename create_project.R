@@ -675,8 +675,9 @@ actions_list <- splice(
   action(
     name = "plot_cox_all",
     run = "r:latest analysis/post_release/plot_cox_all.R",
-    needs = list(
-      "combine_estimates"
+    needs = splice(
+      "combine_estimates",
+      lapply(1:4, function(x) glue("check_fu_{x}"))
     ),
     moderately_sensitive = list(
       hr_vax_ci = "output/release_objects/hr_vax_ci.png"

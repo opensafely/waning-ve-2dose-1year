@@ -59,7 +59,7 @@ caption_str <- str_c("Earliest to latest follow-up dates are as follows: ",
                  collapse = "")
   
 # read estimates data
-estimates_all <- readr::read_csv(here::here(release_folder, "estimates_all.csv")) 
+estimates_all <- readr::read_csv(file.path(release_folder, "estimates_all.csv")) 
 
 # cumulative incidence data
 survtable_redacted <- readr::read_csv(
@@ -515,7 +515,7 @@ print(caption_str)
 
 # save the plot
 ggsave(plot_combined,
-       filename = here::here(release_folder, "images", glue("hr_vax_ci.png")),
+       filename = file.path(release_folder, "images", glue("hr_vax_ci.png")),
        width=page_height, height=page_width, units="cm")
 
 # ggsave(plot_vax + theme(plot.margin = margin(2, 2, 2, 2, "cm")),
