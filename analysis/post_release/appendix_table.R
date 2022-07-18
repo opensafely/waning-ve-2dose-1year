@@ -4,7 +4,7 @@ library(flextable)
 library(officer)
 
 # define release folder
-release_folder <- here::here("release20220622")
+if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
 
 # read subgroups
 subgroups <- readr::read_rds(
@@ -20,6 +20,8 @@ new_names <- str_replace(old_names, "Positive", "positive")
 new_names <- str_replace(new_names, "Non", "non")
 new_names <- str_remove(new_names, " \\(APCS\\)")
 names(outcomes) <- new_names
+
+outcomes_order <- c(2,3,1,4)
 
 # event counts
 event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv")) %>%
@@ -61,10 +63,7 @@ data <- event_counts %>%
     by = c("subgroup", "outcome", "k")
   )
 
-s <- 1
-o <- "postest"
-
-appendix_table_docx <- function(s,o,i) {
+appendix_table_docx <- function(s,o) {
   
   subgroup_long <- subgroups[s]
   outcome_long <- names(outcomes)[outcomes==o]
@@ -148,15 +147,10 @@ appendix_table_docx <- function(s,o,i) {
   doc <- body_add_flextable(doc, value = flextable_out, split = FALSE)  %>%
     body_add_par(value = " ", style = NULL, pos = "after") # add blank line
   
-  # if subgroups 1 or 2 landscape
-  if (s %in% 1:2) {
-    doc <- body_end_section_landscape(doc)
-  }
-  
-  # only add a break after every second table
-  if ((i %% 2) == 0) {
-    doc <- body_add_break(doc)
-  }
+  readr::write_csv(
+    data_table,
+    file = here::here(release_folder, glue("appendix_table_{s}_{o}.csv"))
+  )
   
 }
 
@@ -175,15 +169,14 @@ autonum <- run_autonum(
 doc <- read_docx() 
 
 for (s in 1:4) {
-  for (o in outcomes) {
+  for (o in outcomes[outcomes_order]) {
     
-    i <- 1
+    appendix_table_docx(s,o)
     
-    appendix_table_docx(s,o,i)
-    
-    i <- i+1
   }
 }
+
+doc <- body_end_section_landscape(doc)
 
 doc <- print(doc, target = here::here(release_folder, "appendix_table.docx"))
 
