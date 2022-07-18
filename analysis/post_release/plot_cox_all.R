@@ -39,14 +39,17 @@ subgroup_labels <- seq_along(subgroups)
 # define comparisons
 comparisons <- c("BNT162b2", "ChAdOx1", "both")
 
-################################################################################
-# min and max follow-up dates per subgroup
-
 if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
   check_fu_path <- release_folder
+  surv_path <- release_folder
 } else {
   check_fu_path <- "output/tte/images"
+  surv_path <- "output/subsequent_vax/tables"
 }
+
+
+################################################################################
+# min and max follow-up dates per subgroup
 
 min_max_fu_dates <- bind_rows(lapply(
   1:4,
@@ -70,7 +73,7 @@ estimates_all <- readr::read_csv(file.path(release_folder, "estimates_all.csv"))
 
 # cumulative incidence data
 survtable_redacted <- readr::read_csv(
-  file.path(release_folder, "survtable_redacted.csv")) %>%
+  file.path(surv_path, "survtable_redacted.csv")) %>%
   mutate(across(subgroup,
                 ~ case_when(
                   str_detect(.x, "65") ~ 1,
