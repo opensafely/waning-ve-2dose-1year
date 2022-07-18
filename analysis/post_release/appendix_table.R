@@ -23,7 +23,7 @@ names(outcomes) <- new_names
 outcomes_order <- c(2,3,1,4)
 
 cat("read event counts data")
-event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv")) %>%
+event_counts <- readr::read_csv(file.path(release_folder, "event_counts_all.csv")) %>%
   mutate(across(subgroup, as.integer)) %>%
   filter(!is.na(subgroup)) %>%
   select(-person_years) %>%
@@ -33,7 +33,7 @@ event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv
   )
 
 cat("read estimates data")
-estimates_k <- readr::read_csv(here::here(release_folder, "estimates_all.csv")) %>%
+estimates_k <- readr::read_csv(file.path(release_folder, "estimates_all.csv")) %>%
   filter(variable == "k", !reference_row) %>%
   mutate(across(c("estimate", "conf.low", "conf.high"),
                 ~format(round(exp(.x), 2), nsmall=2))) %>%
@@ -152,7 +152,7 @@ appendix_table_docx <- function(s,o) {
     
     readr::write_csv(
       data_table,
-      file = here::here(release_folder, glue("appendix_table_{s}_{o}.csv"))
+      file = file.path(release_folder, glue("appendix_table_{s}_{o}.csv"))
     )
     
   }
@@ -188,7 +188,7 @@ for (s in 1:4) {
 
 if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
   doc <- officer::body_end_section_landscape(doc)
-  doc <- print(doc, target = here::here(release_folder, "appendix_table.docx"))
+  doc <- print(doc, target = file.path(release_folder, "appendix_table.docx"))
 }
 
 
