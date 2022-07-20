@@ -196,7 +196,9 @@ plot_vax_data <- plot_data %>%
   filter(
     comparison != "both",
     outcome_unlabelled != "anytest",
-    as.integer(model) == 2
+    as.integer(model) == 2,
+    !(as.integer(subgroup) == 3L & comparison == "BNT162b2"),
+    !(as.integer(subgroup) == 4L & comparison == "ChAdOx1")
   ) %>%
   mutate(across(outcome,
                 factor,
@@ -268,7 +270,7 @@ plot_vax <- plot_vax_data %>%
     oob = scales::oob_keep,
     sec.axis = sec_axis(
       ~(1-.),
-      name="Estimated VE\n=\n100 x (1-HR)",
+      name="Estimated VE = 100 x (1-HR)",
       breaks = primary_vax_y2[["breaks"]],
       labels = function(x){formatpercent100(x, 1)}
     )
@@ -327,8 +329,8 @@ plot_vax <- plot_vax_data %>%
     axis.title.y.right = element_text(
       size = 8,
       margin = margin(t = 0, r = 0, b = 0, l = 10),
-      angle = 0,
-      vjust = 0.5
+      # angle = 0,
+      # vjust = 0.5
     ),
     
     axis.text.x = element_text(size=8, angle=90, hjust=1),
@@ -366,22 +368,25 @@ x_breaks <- seq(3, 48, 4)
 x_labels <- as.character(x_breaks)
 alpha_area <- 0.5
 # create plot
-max_nrisk <- 1000000#max(survtable_redacted$n.risk)
+# max_nrisk <- 1000000#max(survtable_redacted$n.risk)
 
 plot_ci_data <- survtable_redacted %>%
-  filter(!(as.integer(subgroup) == 4L & arm == "ChAdOx1")) %>%
-  filter(time <=50) %>%
+  filter(
+    !(as.integer(subgroup) == 3L & arm == "BNT162b2"),
+    !(as.integer(subgroup) == 4L & arm == "ChAdOx1")
+    ) %>%
+  filter(time <= 48) %>%
   mutate(across(subgroup,
                 factor,
                 levels = levels(survtable_redacted$subgroup),
                 labels = str_replace(str_replace(levels(survtable_redacted$subgroup), "\\n", " "), "and", "&")
                 )) %>%
-  mutate(
-    nrisk_scaled = n.risk/max_nrisk,
-    nrisk_scaled_BNT = if_else(arm == "BNT162b2", nrisk_scaled, NA_real_),
-    nrisk_scaled_AZ = if_else(arm == "ChAdOx1", nrisk_scaled, NA_real_),
-    nrisk_scaled_unvax = if_else(arm == "Unvaccinated", nrisk_scaled, NA_real_),
-  ) %>%
+  # mutate(
+  #   nrisk_scaled = n.risk/max_nrisk,
+  #   nrisk_scaled_BNT = if_else(arm == "BNT162b2", nrisk_scaled, NA_real_),
+  #   nrisk_scaled_AZ = if_else(arm == "ChAdOx1", nrisk_scaled, NA_real_),
+  #   nrisk_scaled_unvax = if_else(arm == "Unvaccinated", nrisk_scaled, NA_real_),
+  # ) %>%
   mutate(
     variant = factor(
       case_when(
@@ -411,24 +416,24 @@ plot_ci <- plot_ci_data %>%
     # y = c.inc,
     colour = arm
     )) +
-  geom_area(
-    aes(y = nrisk_scaled_unvax),
-    fill = palette_adj["Unvaccinated"],
-    linetype = "blank",
-    alpha = alpha_area
-  ) +
-  geom_area(
-    aes(y = nrisk_scaled_AZ),
-    fill = palette_adj["ChAdOx1"],
-    linetype = "blank",
-    alpha = alpha_area
-  ) +
-  geom_area(
-    aes(y = nrisk_scaled_BNT),
-    fill = palette_adj["BNT162b2"],
-    linetype = "blank",
-    alpha = alpha_area
-  ) +
+  # geom_area(
+  #   aes(y = nrisk_scaled_unvax),
+  #   fill = palette_adj["Unvaccinated"],
+  #   linetype = "blank",
+  #   alpha = alpha_area
+  # ) +
+  # geom_area(
+  #   aes(y = nrisk_scaled_AZ),
+  #   fill = palette_adj["ChAdOx1"],
+  #   linetype = "blank",
+  #   alpha = alpha_area
+  # ) +
+  # geom_area(
+  #   aes(y = nrisk_scaled_BNT),
+  #   fill = palette_adj["BNT162b2"],
+  #   linetype = "blank",
+  #   alpha = alpha_area
+  # ) +
   geom_line(
     aes(y = c.inc_alphadelta),
     linetype = "dashed",
@@ -449,18 +454,19 @@ plot_ci <- plot_ci_data %>%
     labels = NULL
   ) +
   scale_y_continuous(
-    name = "Millions of\npeople at risk\n(shaded)",
+    # name = "Millions of\npeople at risk\n(shaded)",
+    name = str_wrap("Cumulative incidence of subsequent dose", 14),
     limits = c(0,1),
     labels = format(seq(0,1,0.25), nsmall=2),
-    oob = scales::oob_keep,
-    minor_breaks = seq(0,1,0.125),
-    sec.axis = sec_axis(
-      ~(.),
-      name = str_wrap("Cumulative incidence of subsequent dose (line)", 14),
-      breaks = seq(0,1,0.25),
-      labels = scales::percent_format()
-      # labels = function(x){x*max_nrisk/1000000}
-    )
+    oob = scales::oob_keep#,
+    # minor_breaks = seq(0,1,0.125),
+    # sec.axis = sec_axis(
+    #   ~(.),
+    #   name = str_wrap("Cumulative incidence of subsequent dose (line)", 14),
+    #   breaks = seq(0,1,0.25),
+    #   labels = scales::percent_format()
+    #   # labels = function(x){x*max_nrisk/1000000}
+    # )
   ) +
   scale_colour_manual(
     name = NULL,
