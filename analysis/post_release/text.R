@@ -26,15 +26,15 @@ survtable_redacted <- readr::read_csv(
 
 survtable_redacted %>%
   filter(
-    subgroup == 2,
+    subgroup == 3,
     # arm == "BNT162b2",
     arm == "ChAdOx1",
     # arm == "Unvaccinated",
-    # time>45
-    time>20, time <40
-  ) %>% print(n=50)
+    time>20
+    # time>20, time <40
+  ) %>% print(n=200)
 
-###############################################################################
+##############################################################################
 # event counts
 event_counts <- readr::read_csv(here::here(release_folder, "event_counts_all.csv")) 
 
