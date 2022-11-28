@@ -2,25 +2,36 @@ library(tidyverse)
 library(glue)
 
 cat("create and define release folder")
-fs::dir_create(here::here("output", "release_objects"))
-if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
+release_folder <- here::here("release20221006")
+
+## read and derive metadata 
+study_parameters <- readr::read_rds(
+  here::here("analysis", "lib", "study_parameters.rds"))
 
 # read subgroups
 subgroups <- readr::read_rds(
   here::here("analysis", "lib", "subgroups.rds"))
 subgroup_labels <- seq_along(subgroups)
 
+# labels for comparison periods
+K <- study_parameters$K
+ends <- seq(2, (K+1)*4, 4)
+starts <- ends + 1
+weeks_since_2nd_vax <- str_c(starts[-(K+1)], ends[-1], sep = "-")
+
 # read outcomes
 outcomes <- readr::read_rds(
   here::here("analysis", "lib", "outcomes.rds"))
-outcomes <- outcomes[!(outcomes %in% c("covidemergency", "anytest"))]
+outcomes <- outcomes[!(outcomes %in% "covidemergency")]
+# outcomes <- outcomes[!(outcomes %in% c("covidemergency", "anytest"))]
 old_names <- names(outcomes)
 new_names <- str_replace(old_names, "Positive", "positive")
 new_names <- str_replace(new_names, "Non", "non")
 new_names <- str_remove(new_names, " \\(APCS\\)")
 names(outcomes) <- new_names
 
-outcomes_order <- c(2,3,1,4)
+outcomes_order <- c(3,4,2,5,1)
+# outcomes_order <- c(2,3,1,4)
 
 cat("read event counts data")
 event_counts <- readr::read_csv(file.path(release_folder, "event_counts_all.csv")) %>%
@@ -60,7 +71,8 @@ data <- event_counts %>%
   left_join(
     estimates_k,
     by = c("subgroup", "outcome", "k")
-  )
+  ) %>%
+  mutate(across(k, factor, labels = weeks_since_2nd_vax))
 
 appendix_table_docx <- function(s,o) {
   
@@ -114,6 +126,7 @@ appendix_table_docx <- function(s,o) {
     cell_width[table_colnames_2 %in% "k"] <- 2L
     cell_width[table_colnames_2 %in% c("n", "events")] <- 2L
     cell_width[table_colnames_2 %in% c("unadjusted HR", "adjusted HR")] <- 3L
+    table_colnames_2[table_colnames_2 %in% "k"] <- "weeks since second dose"
     
     border <- officer::fp_border()
     border_j <- c("k", "events_unvax") 
