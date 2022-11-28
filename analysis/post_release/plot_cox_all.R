@@ -11,7 +11,7 @@ library(cowplot)
 
 ################################################################################
 
-if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
+release_folder <- here::here("release20221006")
 
 fs::dir_create(file.path(release_folder, "images"))
 
@@ -182,8 +182,8 @@ palette_fill <- c("white", "white", palette_adj[1:2])
 names(palette_fill) <- fill_groups
 
 # breaks and lims for y-axes
-primary_vax_y1 <- list(breaks = c(0.02, 0.05, 0.2, 0.5, 1, 2, 4), 
-                       limits = c(0.02, 4))
+primary_vax_y1 <- list(breaks = c(0.01, 0.05, 0.2, 0.5, 1, 2), 
+                       limits = c(0.01, 2.5))
 primary_vax_y2 <- list(breaks = c(0,0.5,0.8, 0.95, 0.98))
 primary_brand_y1 <- list(breaks = c(0.2, 0.5, 1, 2, 5), 
                          limits = c(0.2, 5))
