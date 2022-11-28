@@ -10,7 +10,7 @@ args <- commandArgs(trailingOnly=TRUE)
 
 if(length(args)==0){
   # use for interactive testing
-  release_folder <- here::here("release20220622")
+  release_folder <- here::here("release20221006")
   subgroup_label <- 1L
   
 } else{
