@@ -3,7 +3,7 @@ library(glue)
 
 ################################################################################
 # path for released results
-if (!exists("release_folder")) release_folder <- here::here("output", "release_objects")
+release_folder <- here::here("release20221006")
 
 ################################################################################
 # load data
