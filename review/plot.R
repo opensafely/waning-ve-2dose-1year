@@ -2,7 +2,7 @@ library(tidyverse)
 
 subgroups <- readRDS("~/Documents/waning-ve-2dose-1year/analysis/lib/subgroups.rds")
 
-df_horne <- readr::read_csv("release20220718/estimates_all.csv") %>%
+df_horne <- readr::read_csv("release20221006/estimates_all.csv") %>%
   filter(
     subgroup %in% 1:4,
     outcome %in% c("postest", "covidadmitted"),
@@ -111,6 +111,8 @@ fu_clean <- list(fu_lower = fu_lower, fu_upper = fu_upper)
 df_clean <- df %>%
   select(author, country, brand, outcome, variant, period, design, age, fu = `days fu`) %>%
   bind_cols(fu_clean, estimates_clean) %>%
+  mutate(across(fu_upper, ~if_else(author=="kerr", fu_lower-2.5, .x))) %>%
+  mutate(across(fu_upper, ~if_else(author=="kerr", fu_lower+5, .x))) %>%
   mutate(across(age, ~str_c(.x, " years"))) %>%
   bind_rows(df_horne) %>%
   bind_rows(df_horne %>% filter(outcome=="infection") %>% mutate(outcome = "symptomatic infection")) %>%
@@ -124,7 +126,8 @@ df_clean <- df %>%
                 ~ if_else(str_detect(.x, "infection"),
                           str_replace(str_replace(.x, "infection", "SARS CoV-2 infection"), "symptomatic", "Symptomatic"),
                           "Severe COVID-19")
-                ))
+                )) %>%
+  filter(author!="kerr") # because only up to 3 months
 
 
 
