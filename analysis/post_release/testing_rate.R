@@ -1,7 +1,7 @@
 library(tidyverse)
 library(glue)
 
-cat("create and define release folder")
+# create and define release folder
 release_folder <- here::here("release20221006")
 
 ## read and derive metadata 
@@ -62,7 +62,30 @@ plot_data <- event_counts_processed %>%
   mutate(group = factor(if_else(arm=="unvax", "Unvaccinated", arm))) %>%
   mutate(person28days=365*person_years/28) %>%
   mutate(rate = events/person28days, plot_group=str_c(outcome, group, sep="_")) %>%
-  droplevels()
+  droplevels() %>%
+  mutate(
+    variant = factor(
+      case_when(
+        as.integer(subgroup) == 1L & k == 1 ~ "alpha",
+        as.integer(subgroup) == 1L & k < 9 ~ "delta",
+        as.integer(subgroup) == 1L ~ "omicron",
+        as.integer(subgroup) == 2L & k < 8 ~ "delta",
+        as.integer(subgroup) == 2L ~ "omicron",
+        as.integer(subgroup) == 3L & k < 7 ~ "delta",
+        as.integer(subgroup) == 3L ~ "omicron",
+        as.integer(subgroup) == 4L & k < 4 ~ "delta",
+        as.integer(subgroup) == 4L ~ "omicron",
+        TRUE ~ NA_character_
+      ),
+      levels = variants
+    )
+  ) 
+
+
+# shapes of points
+variants <- c("alpha", "delta", "omicron")
+variant_shapes <- c(16,17,15)
+names(variant_shapes) <- variants
 
 # spacing of points on plot
 position_dodge_val <- 0.6
@@ -74,7 +97,7 @@ primary_vax_y1 <- list(breaks = c(0.25, 0.5, 1, 2, 4),
 
 # colours of points
 palette_colour <- RColorBrewer::brewer.pal(3, "Dark2")[1]
-palette_alpha <- c(0.5, 1)
+palette_alpha <- c(0.4, 0.8)
 names(palette_alpha) <- levels(plot_data$outcome)
 
 plot_data %>%
@@ -87,14 +110,14 @@ plot_data %>%
     colour = palette_colour
   ) +
   geom_point(
-    aes(y = estimate),
+    aes(y = estimate, shape = variant),
     colour = palette_colour,
     size=2,
     position = position_dodge(width = position_dodge_val)
   ) +
   labs(
     x = "Weeks since second dose",
-    y = "Adjusted HR (log scale)",
+    y = "Adjusted hazard ratio (log scale)",
     title = "18-39 years (and not clinically vulnerable) subgroup"
     ) +
   scale_x_continuous(
@@ -111,7 +134,30 @@ plot_data %>%
     name = "Outcome",
     values = palette_alpha
     ) +
-  # scale_fill_discrete(guide = "none") +
+  scale_shape_manual(
+    values = variant_shapes, 
+    name = NULL, 
+    guide = "none"
+  ) +
+  guides(
+    shape = guide_legend(
+      title = "Dominant variant during period:",
+      nrow = 1#,
+      # override.aes = list(
+      #   colour = "black",
+      #   fill = c("white", "white", "black")
+      # )
+    ),
+    alpha = guide_legend(
+      title = "Outcome:",
+      nrow = 2,
+      byrow = TRUE,
+      override.aes = list(
+        shape = 16#,
+        # size = 3
+      )
+    )
+  ) +
   theme_bw() +
   theme(
     panel.border = element_blank(),
@@ -120,12 +166,13 @@ plot_data %>%
     axis.title.x = element_text(margin = margin(t = 10)),
     axis.title.y = element_text(margin = margin(r = 10)),
     
-    legend.position = c(0.75, 0.2),
+    legend.position = c(0.75, 0.18),
     legend.spacing.y = unit(0.1, "cm"),
     legend.key.size = unit(0.3, "cm"),
     legend.title = element_text(size=12),
     legend.text = element_text(size=12),
     legend.box.background = element_rect(colour = "black", fill = "white")
+    
   )
 ggsave(
   filename = "testing_hrs_1839.png",
