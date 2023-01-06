@@ -48,6 +48,8 @@ Below is a description of each of the actions in the [`project.yaml`](./project.
   * These summary statistics are saved in `table1.csv` for release. his action also combines the eligibility counts that have been generated from previous actions, and stores them in `eligibility_count_all.csv` for release.
 * `data_tte_process_{comparison}`
   * Runs [data_tte_process.R](analysis/comparisons/data_tte_process.R) which derives time to event data for each comparison.
+* `check_fu_{subgroup}`
+  * Runs [check_fu.R](waning-ve-2dose-1year/analysis/comparisons/check_fu.R) which plots the distribution of follow-up time across calendar time and comparison periods.
 * `preflight_{comparison}_{subgroup}_{outcome}`
   * Runs [preflight.R](analysis/comparisons/preflight.R) which preprocesses the data for the Cox models, for each compairson, subgroup and outcome.
 * `apply_cox_{comparison}_{subgroup}_{outcome}`
@@ -56,8 +58,10 @@ Below is a description of each of the actions in the [`project.yaml`](./project.
 * `combine_estimates`
   * Runs [combine_estimates.R](analysis/comparisons/combine_estimates.R) which combines estimates from all Cox models and stores them in `estimates_all.csv` for release.
   * This script also combines tables of event counts from [data_tte_process.R](analysis/comparisons/data_tte_process.R) and stores them in `event_counts_all.csv` for release.
+* `appendix_table`
+  * Runs [appendix_table.R](analysis/post_release/appendix_table.R) which prepares tables of event counts and estimates for the appendix.
 * `plot_check`
-  * Runs [plot_cox_check.R](analysis/comparisons/plot_cox_check.R) which plots all estimates such that they can be checked prior to release of `estimates_all.csv`.
+  * Runs [plot_cox_all.R](analysis/comparisons/plot_cox_all.R) which plots all estimates such that they can be checked prior to release of `estimates_all.csv`.
 
 ### `analysis/functions`
 The following scripts contain functions which are used throughout this project:
@@ -69,13 +73,7 @@ The following scripts contain functions which are used throughout this project:
 
 
 ### `analysis/post_release`
-This folder contains scripts that apply further analyses or post-processing of files that have been released from OpenSAFELY (and therefore are not run via the [`project.yaml`](./project.yaml).
-The run-order of these scripts is given in [instructions.R](analysis/post_release/instructions.R).
-
-### `manuscript/`
-
-* [`manuscript_text.Rmd`](manuscript/manuscript_text.Rmd) contains some paragraphs from the manuscript that have a lot of references to the effect estimates **note that this script needs updating with updated wording**
-* [`appendix.Rmd`](manuscript/appendix.Rmd) contains the supplementary material for the paper; to render to a PDF requires [`preamble.tex`](manuscript/preamble.tex) and [`preface.tex`](manuscript/preface.tex)
+This folder contains scripts that apply further analyses or post-processing of files that have been released from OpenSAFELY.
 
 # About the OpenSAFELY framework
 
