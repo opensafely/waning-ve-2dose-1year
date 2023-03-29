@@ -113,9 +113,6 @@ weeks_since_2nd_vax <- str_c(starts[-(K+1)], ends[-1], sep = "-")
 
 ################################################################################
 
-page_height <- 27
-page_width <- 16
-
 # y_lab <- "Hazard Ratio (HR)"
 # y_lab_2 <- "Estimated vaccine effectiveness = 100*(1-HR)\n "
 # y_lab_adj <- "adjusted Hazard Ratio (aHR)"
@@ -249,7 +246,8 @@ plot_vax <- plot_vax_data %>%
   ) +
   geom_point(
     aes(y = estimate),
-    position = position_dodge(width = position_dodge_val)
+    position = position_dodge(width = position_dodge_val),
+    size = 0.9
   ) +
   facet_grid(
     outcome ~ subgroup, 
@@ -351,7 +349,7 @@ plot_vax <- plot_vax_data %>%
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, face= "italic"),
     
-    legend.position = c(0.88, 0.64),
+    legend.position = c(0.875, 0.63),
     legend.spacing.y = unit(0.1, "cm"),
     # big margins to cover up grid lines
     # legend.margin = margin(t = 10, r = 5, b = 10, l = 5),
@@ -381,12 +379,6 @@ plot_ci_data <- survtable_redacted %>%
                 levels = levels(survtable_redacted$subgroup),
                 labels = str_replace(str_replace(levels(survtable_redacted$subgroup), "\\n", " "), "and", "&")
                 )) %>%
-  # mutate(
-  #   nrisk_scaled = n.risk/max_nrisk,
-  #   nrisk_scaled_BNT = if_else(arm == "BNT162b2", nrisk_scaled, NA_real_),
-  #   nrisk_scaled_AZ = if_else(arm == "ChAdOx1", nrisk_scaled, NA_real_),
-  #   nrisk_scaled_unvax = if_else(arm == "Unvaccinated", nrisk_scaled, NA_real_),
-  # ) %>%
   mutate(
     variant = factor(
       case_when(
@@ -413,35 +405,14 @@ plot_ci_data <- survtable_redacted %>%
 plot_ci <- plot_ci_data %>%
   ggplot(aes(
     x = time,
-    # y = c.inc,
     colour = arm
     )) +
-  # geom_area(
-  #   aes(y = nrisk_scaled_unvax),
-  #   fill = palette_adj["Unvaccinated"],
-  #   linetype = "blank",
-  #   alpha = alpha_area
-  # ) +
-  # geom_area(
-  #   aes(y = nrisk_scaled_AZ),
-  #   fill = palette_adj["ChAdOx1"],
-  #   linetype = "blank",
-  #   alpha = alpha_area
-  # ) +
-  # geom_area(
-  #   aes(y = nrisk_scaled_BNT),
-  #   fill = palette_adj["BNT162b2"],
-  #   linetype = "blank",
-  #   alpha = alpha_area
-  # ) +
   geom_line(
     aes(y = c.inc_alphadelta),
     linetype = "dashed",
-    # size=1
     ) +
   geom_line(
     aes(y = c.inc_omicron),
-    # size=1
   ) +
   facet_grid(
     . ~ subgroup,
@@ -458,15 +429,7 @@ plot_ci <- plot_ci_data %>%
     name = str_wrap("Cumulative incidence of subsequent dose", 14),
     limits = c(0,1),
     labels = format(seq(0,1,0.25), nsmall=2),
-    oob = scales::oob_keep#,
-    # minor_breaks = seq(0,1,0.125),
-    # sec.axis = sec_axis(
-    #   ~(.),
-    #   name = str_wrap("Cumulative incidence of subsequent dose (line)", 14),
-    #   breaks = seq(0,1,0.25),
-    #   labels = scales::percent_format()
-    #   # labels = function(x){x*max_nrisk/1000000}
-    # )
+    oob = scales::oob_keep
   ) +
   scale_colour_manual(
     name = NULL,
@@ -487,7 +450,7 @@ plot_ci <- plot_ci_data %>%
       ),
     
     axis.title.x = element_text(
-      size = 10, 
+      size = 8, 
       margin = margin(t = 20, r = 0, b = 10, l = 0)
       ),
     axis.title.y.left = element_text(
@@ -522,8 +485,9 @@ plot_ci <- plot_ci_data %>%
 
 plot_combined <- plot_grid(
   plot_ci, plot_vax, 
-  nrow = 2, rel_heights = c(0.22,0.78),
-  labels = c("A", "B"),
+  nrow = 2, rel_heights = c(0.17,0.83),
+  labels = c("A)", "B)"),
+  label_size = 10,
   align="v", axis = c("lr")
 )
 
@@ -531,8 +495,8 @@ print(caption_str)
 
 # save the plot
 ggsave(plot_combined,
-       filename = file.path(release_folder, "images", glue("hr_vax_ci.png")),
-       width=page_height, height=page_width, units="cm")
+       filename = file.path(release_folder, "images", glue("hr_vax_ci.pdf")),
+       width=9, height=6, units="in")
 
 # ggsave(plot_vax + theme(plot.margin = margin(2, 2, 2, 2, "cm")),
 #        filename = (release_folder, "images", glue("hr_vax.pdf")),
