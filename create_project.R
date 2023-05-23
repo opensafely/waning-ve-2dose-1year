@@ -683,6 +683,19 @@ actions_list <- splice(
     moderately_sensitive = list(
       hr_vax_ci = "output/release_objects/images/hr_vax_ci.png"
     )
+  ),
+  
+  comment("####################################", 
+          "study definition for propensity model",
+          "####################################"),
+  
+  action(
+    name = "generate_prop_data",
+    run = "cohortextractor:latest generate_cohort --study-definition study_definition_prop --output-format feather",
+    needs = list("data_eligible_cde"),
+    highly_sensitive = list(
+      cohort = "output/input_prop.feather"
+    )
   )
   
 )

@@ -1340,3 +1340,16 @@ actions:
       moderately_sensitive:
         hr_vax_ci: output/release_objects/images/hr_vax_ci.png
 
+  ## #################################### 
+  ## study definition for propensity model 
+  ## #################################### 
+
+  generate_prop_data:
+    run: cohortextractor:latest generate_cohort --study-definition study_definition_prop
+      --output-format feather
+    needs:
+    - data_eligible_cde
+    outputs:
+      highly_sensitive:
+        cohort: output/input_prop.feather
+

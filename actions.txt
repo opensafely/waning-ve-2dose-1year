@@ -33,4 +33,4 @@ apply_model_cox_ChAdOx1_3_anytest   preflight_ChAdOx1_3_postest
 apply_model_cox_ChAdOx1_3_postest   preflight_ChAdOx1_3_covidadmitted 
 apply_model_cox_ChAdOx1_3_covidadmitted   preflight_ChAdOx1_3_coviddeath 
 apply_model_cox_ChAdOx1_3_coviddeath   preflight_ChAdOx1_3_noncoviddeath 
-apply_model_cox_ChAdOx1_3_noncoviddeath  combine_estimates    appendix_table    plot_cox_all
+apply_model_cox_ChAdOx1_3_noncoviddeath  combine_estimates    appendix_table    plot_cox_all    generate_prop_data
