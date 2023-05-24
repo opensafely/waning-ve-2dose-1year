@@ -1,28 +1,85 @@
 ################################################################################
 
-## setup
+# setup ----
 library(tidyverse)
 library(lubridate)
 library(glue)
+library(survival)
 
-## source functions
+# source functions
 source(here::here("analysis", "functions", "data_process_functions.R"))
 
-## load extracted data
-extract <- arrow::read_feather(here::here("output", "input_prop.feather")) %>%
-  # because date types are not returned consistently by cohort extractor
-  mutate(across(c(contains("_date")), 
-                ~ floor_date(
-                  as.Date(., format="%Y-%m-%d"),
-                  unit = "days")))
+# define additional functions
+gluec <- function(x) as.character(glue(x))
 
+# read subgroups
+subgroups <- readr::read_rds(
+  here::here("analysis", "lib", "subgroups.rds"))
+subgroup_labels <- seq_along(subgroups)
+
+# real list of model covariates
+model_varlist <- readr::read_rds(
+  here::here("analysis", "lib", "model_varlist.rds")
+)
+
+# load data ----
+
+# read data from individuals in the 2 dose group who were included in the VE analysis
+data_included <- lapply(
+  subgroup_labels,
+  function(x) {
+    comparison <- "both"
+    if (x==3) comparison <- "ChAdOx1"
+    if (x==4) comparison <- "BNT162b2"
+    readr::read_rds(here::here("output", "tte", "data", glue("data_tte_{comparison}_{x}_coviddeath.rds"))) %>%
+      filter(arm != "unvax") %>%
+      distinct(patient_id, arm) %>%
+      mutate(subgroup = x)
+  }
+) %>%
+  bind_rows()
+
+# read data with baseline covariates and outcomes
+data_all <- readr::read_rds(
+  here::here("output", "data", "data_all.rds")) %>%
+  # only keep those in data_included
+  right_join(data_included %>% distinct(patient_id), by = "patient_id")
+
+# covariates
+data_covs <- data_all %>%
+  select(
+    patient_id, arm, subgroup,
+    all_of(unname(unlist(model_varlist)))
+  )
+
+# time to event
+data_tte <- data_all %>%
+  transmute(
+    patient_id, 
+    end_fup_date = pmin(dereg_date, death_date, end_12_date, subsequent_vax_date, na.rm=TRUE),
+    day = as.integer(end_fup_date - start_1_date),
+    status = !is.na(subsequent_vax_date) & subsequent_vax_date <= end_fup_date
+  ) 
+
+# load extracted data
+data_extract <- arrow::read_feather(here::here("output", "input_prop.feather")) %>%
+  # because date types are not returned consistently by cohort extractor
+  mutate(
+    across(
+      c(contains("_date")), 
+      ~ floor_date(as.Date(., format="%Y-%m-%d"), unit = "days")
+    )
+  ) 
+
+
+# define recurring variables in extracted data
 recurring_vars <- c(
   "postest", "admitted_planned", "admitted_unplanned", 
   # covidunplanned must come after unplanned here
   "admitted_covidunplanned"
-  )
+)
 
-gluec <- function(x) as.character(glue(x))
+# sort out dummy data ----
 
 ## if running on dummy data make it more sensible
 # i.e. enforce the following:
@@ -31,232 +88,132 @@ gluec <- function(x) as.character(glue(x))
 # - discharged_var_1_date > admitted_var_1_date
 if(Sys.getenv("OPENSAFELY_BACKEND") %in% c("", "expectations")) {
   
-  for (v in recurring_vars) {
-    indices <- extract %>% select(starts_with(v)) %>% names() %>% 
-      str_extract(., "\\d+") %>% as.integer() %>% sort()
-    # loop over the number of times each variable recurs
-    for (i in indices) {
+  data_extract <- local({
+    
+    # for some reason need to redfine gluec here otherwise get errors
+    gluec <- function(x) as.character(glue(x))
+    extract_tmp <- data_extract
+    
+    for (v in recurring_vars) {
       
-      if (i == 0) {
-        # ensure all dates before start_1_date
-        extract <- extract %>%
-          mutate(
-            across(
-              matches(gluec("{v}_{i}_date")), 
-              ~if_else(
-                .x < start_1_date,
-                as.Date(.x),
-                as.Date(NA_character_)
-              )))
-      } 
+      indices <- extract_tmp %>% select(starts_with(v)) %>% names() %>% 
+        str_extract(., "\\d+") %>% as.integer() %>% sort()
       
-      if (i == 1) {
-        if (str_detect(v, "admitted")) shift <- 0 else shift <- -28
-        # ensure all dates are after start_1_date - shift
-        extract <- extract %>%
-          mutate(
-            across(
-              matches(gluec("{v}_{i}_date")), 
-              ~if_else(
-                start_1_date + shift < .x,
-                as.Date(.x),
-                as.Date(NA_character_)
-              )))
-      } 
-      
-      if (i > 1) {
-        # define name of the variable before the current one
-        v_before <- sym(gluec("{v}_{i-1}_date"))
-        # make the current variable missing if it is not after the one before
-        extract <- extract %>%
-          mutate(
-            across(
-              matches(gluec("{v}_{i}_date")), 
-              ~if_else(
-                !! v_before < .x,
-                as.Date(.x),
-                as.Date(NA_character_)
-              )))
-      }
-      
-      if (str_detect(v, "admitted") & (v != "admitted_covidunplanned")) {
-        # make sure discharges occur after admissions
-        v_admitted <- gluec("{v}_{i}_date")
-        v_discharged <- str_replace(v_admitted, "admitted", "discharged")
-        extract <- extract %>%
-          # should be 1:60, but use -1:60 to introduce some errors
-          mutate(!! sym(v_discharged) := !! sym(v_admitted) + runif(nrow(.), -1, 60)) 
-      } 
-      
-      if (v == "admitted_covidunplanned") {
-        extract <- extract %>%
-          mutate(
-            across(
-              gluec("admitted_covidunplanned_{i}_date"),
-              ~if_else(
-                is.na(.x),
-                as.Date(NA_character_),
-                !!sym(gluec("admitted_unplanned_{i}_date"))
+      # loop over the number of times each variable recurs
+      for (i in indices) {
+        
+        if (i == 0) {
+          # ensure all dates before start_1_date
+          extract_tmp <- extract_tmp %>%
+            mutate(
+              across(
+                matches(gluec("{v}_{i}_date")), 
+                ~if_else(
+                  .x < start_1_date,
+                  as.Date(.x),
+                  as.Date(NA_character_)
+                )))
+        } 
+        
+        if (i == 1) {
+          if (str_detect(v, "admitted")) shift <- 0 else shift <- -28
+          # ensure all dates are after start_1_date - shift
+          extract_tmp <- extract_tmp %>%
+            mutate(
+              across(
+                matches(gluec("{v}_{i}_date")),
+                ~if_else(
+                  start_1_date + shift < .x,
+                  as.Date(.x),
+                  as.Date(NA_character_)
+                )))
+        }
+        
+        if (i > 1) {
+          # define name of the variable before the current one
+          v_before <- sym(gluec("{v}_{i-1}_date"))
+          # make the current variable missing if it is not after the one before
+          extract_tmp <- extract_tmp %>%
+            mutate(
+              across(
+                matches(gluec("{v}_{i}_date")),
+                ~if_else(
+                  !! v_before < .x,
+                  as.Date(.x),
+                  as.Date(NA_character_)
+                )))
+        }
+        
+        if (str_detect(v, "admitted") & (v != "admitted_covidunplanned")) {
+          # make sure discharges occur after admissions
+          v_admitted <- gluec("{v}_{i}_date")
+          v_discharged <- str_replace(v_admitted, "admitted", "discharged")
+          extract_tmp <- extract_tmp %>%
+            # should be 1:60, but use -1:60 to introduce some errors
+            mutate(!! sym(v_discharged) := !! sym(v_admitted) + runif(nrow(.), -1, 60))
+        }
+        
+        if (v == "admitted_covidunplanned") {
+          extract_tmp <- extract_tmp %>%
+            mutate(
+              across(
+                gluec("admitted_covidunplanned_{i}_date"),
+                ~if_else(
+                  is.na(.x),
+                  as.Date(NA_character_),
+                  !!sym(gluec("admitted_unplanned_{i}_date"))
+                )
+              )
+            ) %>%
+            mutate(
+              across(
+                gluec("discharged_covidunplanned_{i}_date"),
+                ~if_else(
+                  is.na(!!sym(gluec("admitted_covidunplanned_{i}_date"))),
+                  as.Date(NA_character_),
+                  !!sym(gluec("discharged_unplanned_{i}_date"))
+                )
               )
             )
-          ) %>%
-          mutate(
-            across(
-              gluec("discharged_covidunplanned_{i}_date"),
-              ~if_else(
-                is.na(!!sym(gluec("admitted_covidunplanned_{i}_date"))),
-                as.Date(NA_character_),
-                !!sym(gluec("discharged_unplanned_{i}_date"))
-              )
-            )
-          )
+        }
+        
       }
       
     }
-  }
+    
+    return(extract_tmp)
+    
+  })
   
 }
 
-# # status on start_1_date
-# # loop over hospitalisations:
-# data_start_1_date <- extract
-# for (v in recurring_vars[str_detect(recurring_vars, "admitted")]) {
-#   
-#   v_type <- str_remove(v, "admitted_")
-#   v_discharged <- as.character(glue("discharged_{v_type}_0_date"))
-#   data_start_1_date <- data_start_1_date %>%
-#     mutate(
-#       !!sym(as.character(glue("inhosp_{v_type}"))) :=
-#         !is.na(!!sym(as.character(glue("{v}_0_date")))) &
-#         !is.na(!!sym(v_discharged)) &
-#         # still counted as in hospital on day of discharge
-#         start_1_date <= !!sym(v_discharged)   
-#     )
-#   
-# }
-# 
-# data_start_1_date <- data_start_1_date %>%
-#   transmute(
-#     patient_id, day = 0, 
-#     inhosp_planned, inhosp_unplanned, inhosp_covidunplanned,
-#     # eol care initiated
-#     endoflife = !is.na(endoflife_date) &
-#       (endoflife_date < start_1_date),
-#     # positive test in past 30 days
-#     recentpostest = !is.na(postest_1_date) &
-#       (postest_1_date < start_1_date) & 
-#       as.integer(start_1_date - postest_1_date) < 30
-#   )
-# 
-# ## each time status updates after start_1_date
-# 
-# static_vars <- c("patient_id", "start_1_date")
-# 
-# # end of life:
-# data_endoflife <- extract %>%
-#   select(all_of(static_vars), endoflife_date) %>%
-#   # remove missing rows as already coded as 0 on start date
-#   filter(!is.na(endoflife_date)) %>%
-#   # remove endoflife_date < start_1_date as already coded as 1 on start date
-#   filter(start_1_date <= endoflife_date) %>%
-#   transmute(
-#     patient_id, 
-#     day = as.integer(endoflife_date - start_1_date),
-#     endoflife = TRUE
-#     )
-# 
-# # postest:
-# # transform data to long format
-# data_postest_long <- extract %>%
-#   select(all_of(static_vars), starts_with("postest")) %>%
-#   pivot_longer(cols = -all_of(static_vars), values_drop_na = TRUE) 
-# 
-# data_postest <- data_postest_long %>%
-#   select(all_of(static_vars), postest_start_date = value) %>%
-#   # end date for a "positive test episode" is 30 days after date of positive test
-#   mutate(postest_end_date = postest_start_date+30) %>%
-#   # get the date of the next positive test
-#   group_by(patient_id) %>%
-#   mutate(lead_postest_start_date = lead(postest_start_date)) %>%
-#   ungroup() %>%
-#   # if the next positive test is less than 30 days after the current one, remove the end date
-#   mutate(
-#     across(
-#       postest_end_date, 
-#       ~if_else(
-#         !is.na(lead_postest_start_date) & (lead_postest_start_date <= .x),
-#         as.Date(NA_character_),
-#         .x
-#         ))) %>%
-#   select(-lead_postest_start_date) %>%
-#   # transform data to long format
-#   pivot_longer(cols = -all_of(static_vars), values_drop_na = TRUE) %>%
-#   # postest=1 for start dates, =0 for end dates
-#   mutate(postest = name == "postest_start_date") %>%
-#   # arrange events (start and end dates) by their date, within individuals
-#   group_by(patient_id) %>%
-#   arrange(value, .by_group = TRUE) %>%
-#   # calculate a "moving sum" of the current row and the previous row, 
-#   # to flag instances where there are two start dates in a row
-#   mutate(cumulsum = stats::filter(postest, rep(1,2), sides = 1)) %>%
-#   ungroup() %>% 
-#   # remove start dates if preceding row is also a start date (within patients)
-#   filter(is.na(cumulsum) | cumulsum == 1) %>%
-#   transmute(
-#     patient_id,
-#     day = as.integer(value - start_1_date),
-#     postest
-#   )
-# 
-# # check that there's never a new positive test less than 30 days after the last one
-# cat("Check all postitive tests separated by at least 30 days.\n")
-# cat("Following dataset should have 0 rows:\n")
-# data_postest %>%
-#   filter(postest) %>%
-#   group_by(patient_id) %>%
-#   mutate(timesincelast_postest = c(NA_integer_, diff(day))) %>%
-#   ungroup() %>%
-#   filter(timesincelast_postest < 30) %>% 
-#   nrow()
-# 
-# # hospitalisations
-# data_hosp <- extract %>%
-#   select(all_of(static_vars), matches("\\w+_planned_\\d+_date")) %>%
-#   pivot_longer(
-#     cols = -all_of(static_vars),
-#     values_drop_na = TRUE
-#   ) %>%
-#   # remove rows before start date as already coded
-#   filter(start_1_date <= value) %>%
-#   mutate(day = as.integer(value - start_1_date)) %>%
-#   transmute(
-#     patient_id, 
-#     # still counted as in hospital on day of discharge
-#     day = if_else(str_detect(name, "^admitted"), day, day+1),
-#     inhosp_planned = str_detect(name, "^admitted")
-#   )
-# 
-# 
-# data_fup <- data_endoflife %>%
-#   full_join(data_postest, by = c("patient_id", "day")) %>%
-#   full_join(data_hosp, by = c("patient_id", "day")) 
-# 
-# 
-# bind_rows(
-#   data_start_1_date,
-#   data_fup
-# ) %>% filter(patient_id<10) %>% arrange(patient_id, day) %>%
-#   mutate(across(-c(patient_id, day), ~if_else(is.na(.x) & day == 0, FALSE, .x))) %>%
-#   group_by(patient_id) %>%
-#   fill(everything(), .direction = "down")
-
-########
+#### process data ----
   
+data_processed <- data_extract %>%
+  # only keep those in data_included
+  right_join(data_included %>% distinct(patient_id), by = "patient_id") %>%
+  # join end_fup_date
+  left_join(data_tte %>% select(patient_id, end_fup_date), by = "patient_id") %>%
+  # remove dates after end_fup_date as not needed
+  mutate(
+    across(
+      ends_with("_date"), 
+      ~if_else(
+        .x <= end_fup_date,
+        .x,
+        as.Date(NA_character_)
+      )
+    )
+  )
+
+# clean up
+rm(data_all, data_included, data_extract)
+
+# define static vars as used frequently in following chunks
 static_vars <- c("patient_id", "start_1_date")
 
-# endoflife
-# end of life:
-data_endoflife <- extract %>%
+## endoflife:
+data_endoflife <- data_processed %>%
   select(all_of(static_vars), endoflife_date) %>%
   transmute(
     patient_id, 
@@ -268,8 +225,8 @@ data_endoflife <- extract %>%
     )
   )
 
-# postest:
-data_postest <- extract %>%
+## postest:
+data_postest <- data_processed %>%
   select(all_of(static_vars), starts_with("postest")) %>%
   pivot_longer(cols = -all_of(static_vars), values_drop_na = TRUE) %>%
   select(all_of(static_vars), postest_start_date = value) %>%
@@ -318,7 +275,7 @@ data_postest <- extract %>%
 
 hosp_vars <- recurring_vars[str_detect(recurring_vars, "admitted")]
 issues <- list()
-data_hosp_processed <- extract %>% select(all_of(static_vars), starts_with(c("admitted", "discharged")))
+data_hosp_processed <- data_processed %>% select(all_of(static_vars), starts_with(c("admitted", "discharged")))
 
 for (v in hosp_vars) {
   
@@ -406,8 +363,9 @@ for (v in hosp_vars) {
   
 }
 
+print(lapply(issues, function(x) unlist(x)))
 
-# derive data_hosp
+# derive data_hosp:
 data_hosp <- list()
 for (v in hosp_vars) {
   
@@ -426,27 +384,35 @@ for (v in hosp_vars) {
   
 }
 
+# join datasets
 by_vars <- c("patient_id", "day")
-
-data_all <- data_endoflife %>%
+data_joined <- data_endoflife %>%
   full_join(data_postest, by = by_vars) %>%
   full_join(data_hosp$admitted_planned, by = by_vars) %>%
   full_join(data_hosp$admitted_unplanned, by = by_vars) %>%
-  full_join(data_hosp$admitted_covidunplanned, by = by_vars)
+  full_join(data_hosp$admitted_covidunplanned, by = by_vars) %>%
+  full_join(data_tte %>% select(-end_fup_date), by = by_vars)
+
+# clean up
+rm(data_postest, data_hosp, data_endoflife, data_hosp_processed, data_tte)
 
 cat("check for days with >1 rows:\n")
-data_all %>% 
+data_joined %>% 
   group_by(patient_id, day) %>%
   mutate(n=n()) %>% 
   filter(n>1) %>%
   nrow()
 
-data_filled <- data_all %>%
+# fill missing values from joins
+data_filled <- data_joined %>%
   select(patient_id, day, everything()) %>%
   arrange(patient_id, day) %>%
+  # create `sequence` of dates within patients
   group_by(patient_id) %>%
   mutate(sequence = row_number()) %>%
   ungroup() %>%
+  # if vairables are missing when sequence = 1, fill with FALSE
+  # (if it were TRUE they would have been excluded previously)
   mutate(
     across(
       -c(patient_id, day), 
@@ -454,18 +420,45 @@ data_filled <- data_all %>%
       )
     ) %>%
   select(-sequence) %>%
+  # within each patient, fill missing values with the last non missing value
   group_by(patient_id) %>%
-  fill(-c(patient_id, day), .direction = "down")
+  fill(-c(patient_id, day), .direction = "down") %>%
+  ungroup()
 
-data_0 <- data_filled %>%
+# get all data on or before day zero, identify the latest row and set day=0
+data_0_true <- data_filled %>%
   filter(day <= 0) %>%
   group_by(patient_id) %>%
-  summarise(across(everything(), last)) %>%
+  summarise(across(everything(), last), .groups = "drop") %>%
   mutate(day=0)
 
+# for patients who are not in day 0, 
+data_0_false <- data_filled %>%
+  anti_join(data_0_true %>% select(patient_id), by = "patient_id") %>%
+  distinct(patient_id, .keep_all = TRUE) %>%
+  mutate(day = 0) %>%
+  mutate(across(-c(patient_id, day), ~FALSE)) 
+
+# bind day 0 data with filled data after day 0
 data_final <- bind_rows(
-  data_0,
+  data_0_true,
+  data_0_false,
   data_filled %>% filter(day > 0)
 ) %>%
   arrange(patient_id, day) 
+
+# clean up
+rm(data_joined, data_0_true, data_0_false, data_filled)
+
+#####
+tmerge(
+  data1 = data_final,
+  data2 = data_final,
+  id = patient_id,
+  tstart = -1,
+  tstop = day,
+  ind_outcome = status
+)
+
+
 
