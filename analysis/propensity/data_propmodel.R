@@ -58,7 +58,8 @@ data_covs <- data_all %>%
     vax2_date = start_1_date,
     vax2_brand = arm, 
     all_of(unname(unlist(model_varlist)))
-  )
+  ) %>%
+  mutate(across(vax2_brand, ~factor(.x)))
 
 # time to event
 data_tte <- data_all %>%
