@@ -1370,5 +1370,8 @@ actions:
     - data_propmodel
     outputs:
       highly_sensitive:
-        res_cox: output/propensity/model/res_cox_*.rds
+        propmodel: output/propensity/model/propmodel_*.rds
+      moderately_sensitive:
+        glance: output/propensity/model/glance_propmodel.csv
+        tidy: output/propensity/model/tidy_propmodel.csv
 

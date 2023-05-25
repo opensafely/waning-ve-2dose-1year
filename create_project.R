@@ -719,7 +719,11 @@ actions_list <- splice(
       "data_propmodel"
     ),
     highly_sensitive = list(
-      res_cox = "output/propensity/model/res_cox_*.rds"
+      propmodel = "output/propensity/model/propmodel_*.rds"
+    ),
+    moderately_sensitive = list(
+      glance = "output/propensity/model/glance_propmodel.csv",
+      tidy = "output/propensity/model/tidy_propmodel.csv"
     )
   )
   
