@@ -696,6 +696,31 @@ actions_list <- splice(
     highly_sensitive = list(
       cohort = "output/input_prop.feather"
     )
+  ),
+  
+  action(
+    name = "data_propmodel",
+    run = "r:latest analysis/propensity/data_propmodel.R",
+    needs = splice(
+      "data_covariates_process",
+      "data_tte_process_BNT162b2",
+      "data_tte_process_ChAdOx1",
+      "generate_prop_data"
+    ),
+    highly_sensitive = list(
+      data_propmodel = "output/propensity/data/data_propmodel.rds"
+    )
+  ),
+  
+  action(
+    name = "fit_propmodel",
+    run = "r:latest analysis/propensity/fit_propmodel.R",
+    needs = splice(
+      "data_propmodel"
+    ),
+    highly_sensitive = list(
+      res_cox = "output/propensity/model/res_cox_*.rds"
+    )
   )
   
 )

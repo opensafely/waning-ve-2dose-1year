@@ -1353,3 +1353,22 @@ actions:
       highly_sensitive:
         cohort: output/input_prop.feather
 
+  data_propmodel:
+    run: r:latest analysis/propensity/data_propmodel.R
+    needs:
+    - data_covariates_process
+    - data_tte_process_BNT162b2
+    - data_tte_process_ChAdOx1
+    - generate_prop_data
+    outputs:
+      highly_sensitive:
+        data_propmodel: output/propensity/data/data_propmodel.rds
+
+  fit_propmodel:
+    run: r:latest analysis/propensity/fit_propmodel.R
+    needs:
+    - data_propmodel
+    outputs:
+      highly_sensitive:
+        res_cox: output/propensity/model/res_cox_*.rds
+
