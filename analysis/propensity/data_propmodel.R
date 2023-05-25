@@ -1,4 +1,5 @@
 ################################################################################
+#  prepare data for 3rd dose model
 
 # setup ----
 library(tidyverse)
@@ -33,12 +34,12 @@ data_included <- lapply(
   subgroup_labels,
   function(x) {
     comparison <- "both"
+    # only one brand used in subgroups 3 and 4
     if (x==3) comparison <- "ChAdOx1"
     if (x==4) comparison <- "BNT162b2"
     readr::read_rds(here::here("output", "tte", "data", glue("data_tte_{comparison}_{x}_coviddeath.rds"))) %>%
       filter(arm != "unvax") %>%
-      distinct(patient_id, arm) %>%
-      mutate(subgroup = x)
+      distinct(patient_id)
   }
 ) %>%
   bind_rows()
@@ -47,14 +48,15 @@ data_included <- lapply(
 data_all <- readr::read_rds(
   here::here("output", "data", "data_all.rds")) %>%
   # only keep those in both datasets
-  inner_join(data_included %>% distinct(patient_id), by = "patient_id")
+  inner_join(data_included, by = "patient_id")
 
 # covariates
 data_covs <- data_all %>%
   select(
-    patient_id, arm, 
+    patient_id, 
     subgroup, jcvi_group, elig_date, region,
     vax2_date = start_1_date,
+    vax2_brand = arm, 
     all_of(unname(unlist(model_varlist)))
   )
 
@@ -80,7 +82,8 @@ data_extract <- arrow::read_feather(here::here("output", "input_prop.feather")) 
 
 # define recurring variables in extracted data
 recurring_vars <- c(
-  "postest", "admitted_planned", "admitted_unplanned", 
+  "postest", 
+  "admitted_planned", "admitted_unplanned", 
   # covidunplanned must come after unplanned here
   "admitted_covidunplanned"
 )
@@ -91,12 +94,12 @@ recurring_vars <- c(
 # i.e. enforce the following:
 # - all dates after start_1_date
 # - recurring_var_2_date > recurring_var_1_date
-# - discharged_var_1_date > admitted_var_1_date
+# - discharged_var_1_date > admitted_var_1_date (but allow for some errors here as in real data)
 if(Sys.getenv("OPENSAFELY_BACKEND") %in% c("", "expectations")) {
   
   data_extract <- local({
     
-    # for some reason need to redfine gluec here otherwise get errors
+    # need to redefine gluec() inside local({}) otherwise get errors
     gluec <- function(x) as.character(glue(x))
     extract_tmp <- data_extract
     
@@ -197,7 +200,7 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% c("", "expectations")) {
   
 data_processed <- data_extract %>%
   # only keep those in both datasets
-  inner_join(data_included %>% distinct(patient_id), by = "patient_id") %>%
+  inner_join(data_included, by = "patient_id") %>%
   # join end_fup_date
   left_join(data_tte %>% select(patient_id, end_fup_date), by = "patient_id") %>%
   # remove dates after end_fup_date as not needed
@@ -237,7 +240,7 @@ data_postest <- data_processed %>%
   pivot_longer(cols = -all_of(static_vars), values_drop_na = TRUE) %>%
   select(all_of(static_vars), postest_start_date = value) %>%
   # end date for a "positive test episode" is 30 days after date of positive test
-  mutate(postest_end_date = postest_start_date+30) %>%
+  mutate(postest_end_date = postest_start_date + 30) %>%
   # get the date of the next positive test
   group_by(patient_id) %>%
   mutate(lead_postest_start_date = lead(postest_start_date)) %>%
@@ -254,7 +257,7 @@ data_postest <- data_processed %>%
   select(-lead_postest_start_date) %>%
   # transform data to long format
   pivot_longer(cols = -all_of(static_vars), values_drop_na = TRUE) %>%
-  # postest=1 for start dates, =0 for end dates
+  # postest = TRUE for start dates, = FALSE for end dates
   mutate(postest = name == "postest_start_date") %>%
   # arrange events (start and end dates) by their date, within individuals
   group_by(patient_id) %>%
@@ -271,7 +274,8 @@ data_postest <- data_processed %>%
     postest
   )
   
-## clean hospitalisation data:
+## clean hospitalisation data
+# Need to sort the following issues:
 # issue1: admission_*_x_date > discharge_*_x_date: 
 #         stay of length 1 starting on admission date
 # issue2: admission_*_x_date == discharge_*_x_date: 
@@ -281,8 +285,10 @@ data_postest <- data_processed %>%
 
 hosp_vars <- recurring_vars[str_detect(recurring_vars, "admitted")]
 issues <- list()
-data_hosp_processed <- data_processed %>% select(all_of(static_vars), starts_with(c("admitted", "discharged")))
+data_hosp_processed <- data_processed %>% 
+  select(all_of(static_vars), starts_with(c("admitted", "discharged")))
 
+# summarise and fix the above issues
 for (v in hosp_vars) {
   
   indices <- data_hosp_processed %>% select(starts_with(v)) %>% names() %>% 
@@ -293,7 +299,7 @@ for (v in hosp_vars) {
   
   issues[[v]] <- list(issue1 = integer(), issue2 = integer(), issue3 = integer())
   
-  # summarise issues
+  # summarise the number of times each issue occurs
   for (i in indices) {
     
     # issue1
@@ -326,7 +332,7 @@ for (v in hosp_vars) {
   
   # fix issues 1&2
   # note: this isn't a great fix for issue 1, but I can't think of any better 
-  # way without excluding patients with this issue
+  # way without excluding patients with this issue, which we don't want to do
   for (i in indices) {
     data_hosp_processed <- data_hosp_processed %>%
       mutate(
@@ -369,6 +375,7 @@ for (v in hosp_vars) {
   
 }
 
+# print the issues summary
 print(lapply(issues, function(x) unlist(x)))
 
 # derive data_hosp:
@@ -385,6 +392,7 @@ for (v in hosp_vars) {
     transmute(
       patient_id,
       day = as.integer(value - start_1_date),
+      # inhosp_* = TRUE if an admitted date, FALSE if a discharged date
       !!sym(gluec("inhosp_{v_type}")) := str_detect(name, "^admitted")
     )
   
@@ -455,6 +463,7 @@ rm(data_tdc, data_day0, data_filled)
 # derive final data for cox model
 data_propmodel <- data_tte %>% 
   select(-end_fup_date) %>%
+  # derive tstart and tstop
   tmerge(
     data1 = .,
     data2 = .,
@@ -463,6 +472,7 @@ data_propmodel <- data_tte %>%
     tstop = day,
     ind_outcome = event(day, status)
   ) %>% 
+  # derive time dependent covariates
   tmerge(
     data1 = .,
     data2 = data_final,
