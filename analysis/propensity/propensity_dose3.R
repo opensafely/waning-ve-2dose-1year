@@ -42,8 +42,8 @@ data_included <- lapply(
 # read data with baseline covariates and outcomes
 data_all <- readr::read_rds(
   here::here("output", "data", "data_all.rds")) %>%
-  # only keep those in data_included
-  right_join(data_included %>% distinct(patient_id), by = "patient_id")
+  # only keep those in both datasets
+  inner_join(data_included %>% distinct(patient_id), by = "patient_id")
 
 # covariates
 data_covs <- data_all %>%
@@ -384,27 +384,26 @@ for (v in hosp_vars) {
   
 }
 
-# join datasets
+# join datasets of time dependent covariates
 by_vars <- c("patient_id", "day")
-data_joined <- data_endoflife %>%
+data_tdc <- data_endoflife %>%
   full_join(data_postest, by = by_vars) %>%
   full_join(data_hosp$admitted_planned, by = by_vars) %>%
   full_join(data_hosp$admitted_unplanned, by = by_vars) %>%
-  full_join(data_hosp$admitted_covidunplanned, by = by_vars) %>%
-  full_join(data_tte %>% select(-end_fup_date), by = by_vars)
+  full_join(data_hosp$admitted_covidunplanned, by = by_vars) 
 
 # clean up
-rm(data_postest, data_hosp, data_endoflife, data_hosp_processed, data_tte)
+rm(data_postest, data_hosp, data_endoflife, data_hosp_processed)
 
 cat("check for days with >1 rows:\n")
-data_joined %>% 
+data_tdc %>% 
   group_by(patient_id, day) %>%
   mutate(n=n()) %>% 
   filter(n>1) %>%
   nrow()
 
 # fill missing values from joins
-data_filled <- data_joined %>%
+data_filled <- data_tdc %>%
   select(patient_id, day, everything()) %>%
   arrange(patient_id, day) %>%
   # create `sequence` of dates within patients
@@ -432,7 +431,9 @@ data_0_true <- data_filled %>%
   summarise(across(everything(), last), .groups = "drop") %>%
   mutate(day=0)
 
-# for patients who are not in day 0, 
+# for patients whose first entry is after day 0, impute day 0
+# we know all time dependent covariates must be FALSE, otherwise they would 
+# have an entry or have been excluded already
 data_0_false <- data_filled %>%
   anti_join(data_0_true %>% select(patient_id), by = "patient_id") %>%
   distinct(patient_id, .keep_all = TRUE) %>%
@@ -448,17 +449,30 @@ data_final <- bind_rows(
   arrange(patient_id, day) 
 
 # clean up
-rm(data_joined, data_0_true, data_0_false, data_filled)
+rm(data_tdc, data_0_true, data_0_false, data_filled)
 
-#####
-tmerge(
-  data1 = data_final,
-  data2 = data_final,
-  id = patient_id,
-  tstart = -1,
-  tstop = day,
-  ind_outcome = status
-)
+
+data_tte %>% select(-end_fup_date) %>%
+  tmerge(
+    data1 = .,
+    data2 = .,
+    id = patient_id,
+    tstart = 0,
+    tstop = day,
+    ind_outcome = event(day, status)
+  ) %>% 
+  tmerge(
+    data1 = .,
+    data2 = data_final,
+    id = patient_id,
+    # time dependent covariates
+    endoflife = tdc(day, endoflife),
+    postest = tdc(day, postest),
+    inhosp_planned = tdc(day, inhosp_planned),
+    inhosp_unplanned = tdc(day, inhosp_unplanned),
+    inhosp_covidunplanned = tdc(day, inhosp_covidunplanned)
+  ) %>%
+  as_tibble()
 
 
 
