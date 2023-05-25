@@ -1,10 +1,24 @@
 # setup ----
 library(tidyverse)
-library(lubridate)
 library(glue)
 library(survival)
 library(splines)
+library(broom)
+library(broom.helpers)
 
+# read subgroups
+subgroups <- readr::read_rds(
+  here::here("analysis", "lib", "subgroups.rds"))
+subgroup_labels <- seq_along(subgroups)
+
+# real list of model covariates
+model_varlist <- readr::read_rds(
+  here::here("analysis", "lib", "model_varlist.rds")
+)
+
+# create output directory
+outdir <- here::here("output", "propensity", "model")
+fs::dir_create(outdir)
 
 # read dataset
 data_propmodel <- read_rds(here::here("output", "propensity", "data", "data_propmodel.rds")) 
@@ -27,20 +41,6 @@ data_propmodel <- data_propmodel %>%
   group_split(subgroup) %>%
   as.list()
 
-# read subgroups
-subgroups <- readr::read_rds(
-  here::here("analysis", "lib", "subgroups.rds"))
-subgroup_labels <- seq_along(subgroups)
-
-# real list of model covariates
-model_varlist <- readr::read_rds(
-  here::here("analysis", "lib", "model_varlist.rds")
-)
-
-# output directory
-outdir <- here::here("output", "propensity", "model")
-fs::dir_create(outdir)
-
 # define model formula ----
 
 formula_prop <- formula(
@@ -57,7 +57,11 @@ formula_prop <- formula(
           c(
             "age_smc", "age_smc_squared",
             model_varlist$demographic[model_varlist$demographic != "age"],
-            model_varlist$clinical[model_varlist$clinical != "multimorb"],
+            # - remove multimorb because including individual diagnoses
+            # - remove pregnancy because only defined at baseline, 
+            #   and difficult to accurately capture as time-varying variable,
+            #   also only relevant for under 50s
+            model_varlist$clinical[!(model_varlist$clinical %in% c("multimorb", "pregnancy"))],
             model_varlist$multimorb,
             "endoflife", "postest",
             "inhosp_planned", "inhosp_unplanned", "inhosp_covidunplanned"
@@ -68,32 +72,65 @@ formula_prop <- formula(
         )
     )
   )
-print(formula_prop)
-# Surv(tstart, tstop, ind_outcome, type = "counting") ~ strata(jcvi_group, 
-#     elig_date, region) + ns(vax2_date, 3) + age_smc + age_smc_squared + 
-#     sex + imd + ethnicity + bmi + learndis + sev_mental + flu_vaccine + 
-#     test_hist_n + pregnancy + crd + chd + cld + ckd + cns + diabetes + 
-#     immunosuppressed + endoflife + postest + inhosp_planned + 
-#     inhosp_unplanned + inhosp_covidunplanned
 
+# print formula to check correct
+print(formula_prop)
 
 # fit models separately within subgroups
+glance <- list()
+tidy <- list()
 for (s in subgroup_labels) {
   
-  cat("Subgroup: ", subgroups[s], "\n")
+  cat("Subgroup ", subgroups[s], ": started.\n")
   
-  res_cox <- coxph(
-    formula = formula_prop,
+  # add primary course brand to model if subgroups 1 or 2
+  if (s %in% c(1,2)) {
+    formula_subgroup <- formula_prop %>%
+      update.formula(formula(. ~ . + vax2_brand))
+  } else {
+    formula_subgroup <- formula_prop
+  }
+  
+  propmodel <- coxph(
+    formula = formula_subgroup,
     data = data_propmodel[[s]],
     na.action = "na.fail"
   )
   
-  print(summary(res_cox))
-  
   write_rds(
-    res_cox,
-    file.path(outdir, glue("res_cox_{s}.rds")),
+    propmodel,
+    file.path(outdir, glue("propmodel_{s}.rds")),
     compress = "gz"
   )
   
+  glance[[s]] <-
+    broom::glance(propmodel) %>%
+    add_column(
+      model = s,
+      convergence = propmodel$info[["convergence"]],
+      ram = format(object.size(propmodel), units="GB", standard="SI", digits=3L),
+      .before = 1
+    )
+  
+  tidy[[s]] <-
+    broom.helpers::tidy_plus_plus(
+      propmodel,
+      exponentiate = TRUE
+    ) %>%
+    transmute(
+      model = s,
+      variable, label, reference_row, n_obs, n_event,
+      estimate, std.error, conf.low, conf.high, statistic, p.value
+    )
+  
+  cat("Subgroup ", subgroups[s], ": completed.\n")
+  
 }
+
+glance %>%
+  bind_rows() %>%
+  write_csv(file.path(outdir, "glance_propmodel.csv"))
+
+tidy %>%
+  bind_rows() %>%
+  write_csv(file.path(outdir, "tidy_propmodel.csv"))
