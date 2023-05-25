@@ -49,6 +49,7 @@ data_all <- readr::read_rds(
 data_covs <- data_all %>%
   select(
     patient_id, arm, subgroup,
+    vax2_date = start_1_date,
     all_of(unname(unlist(model_varlist)))
   )
 
@@ -424,35 +425,31 @@ data_filled <- data_tdc %>%
   fill(-c(patient_id, day), .direction = "down") %>%
   ungroup()
 
-# get all data on or before day zero, identify the latest row and set day=0
-data_0_true <- data_filled %>%
-  filter(day <= 0) %>%
-  group_by(patient_id) %>%
-  summarise(across(everything(), last), .groups = "drop") %>%
-  mutate(day=0)
-
 # for patients whose first entry is after day 0, impute day 0
 # we know all time dependent covariates must be FALSE, otherwise they would 
 # have an entry or have been excluded already
-data_0_false <- data_filled %>%
-  anti_join(data_0_true %>% select(patient_id), by = "patient_id") %>%
+data_day0 <- data_filled %>%
+  anti_join(
+    data_filled %>% filter(day <= 0) %>% distinct(patient_id), 
+    by = "patient_id"
+    ) %>%
   distinct(patient_id, .keep_all = TRUE) %>%
   mutate(day = 0) %>%
   mutate(across(-c(patient_id, day), ~FALSE)) 
 
-# bind day 0 data with filled data after day 0
+# bind datasets
 data_final <- bind_rows(
-  data_0_true,
-  data_0_false,
-  data_filled %>% filter(day > 0)
+  data_day0,
+  data_filled
 ) %>%
   arrange(patient_id, day) 
 
 # clean up
-rm(data_tdc, data_0_true, data_0_false, data_filled)
+rm(data_tdc, data_day0, data_filled)
 
-
-data_tte %>% select(-end_fup_date) %>%
+# derive final data for cox model
+data_model <- data_tte %>% 
+  select(-end_fup_date) %>%
   tmerge(
     data1 = .,
     data2 = .,
@@ -472,7 +469,10 @@ data_tte %>% select(-end_fup_date) %>%
     inhosp_unplanned = tdc(day, inhosp_unplanned),
     inhosp_covidunplanned = tdc(day, inhosp_covidunplanned)
   ) %>%
-  as_tibble()
+  as_tibble() %>%
+  select(-c(day, status)) %>%
+  # join baseline covariates
+  left_join(data_covs, by = "patient_id")
 
 
 
