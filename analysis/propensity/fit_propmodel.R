@@ -45,8 +45,8 @@ data_propmodel <- data_propmodel %>%
 
 formula_prop <- formula(
   Surv(tstart, tstop, ind_outcome, type = "counting") ~ 
-    # stratify by jcvi_group, elig_date and region
-    strata(jcvi_group, elig_date, region) + ns(vax2_date, 3)
+    # stratify by jcvi_group and elig_date
+    strata(jcvi_group, elig_date) + ns(vax2_date, 3)
   ) %>%
   # add covariates
   update.formula(
