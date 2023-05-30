@@ -121,7 +121,7 @@ study=StudyDefinition(
     default_expectations={
         "date": {"earliest": days(start_date,-28), "latest": end_date},
         "rate": "uniform",
-        "incidence": 0.8,
+        "incidence": 0.1,
     },
   
     population=patients.satisfying(
