@@ -160,5 +160,38 @@ study=StudyDefinition(
         on_or_after="start_1_date - 28 days",
         find_first_match_in_period=True,
     ),
+
+    # last cancer code before start_0_date
+    cancerhosp_0_date=patients.admitted_to_hospital(
+        returning = "date_admitted",
+        with_these_diagnoses = cancer_icd10,
+        on_or_before = "start_1_date - 1 day",
+        find_last_match_in_period = True,
+        date_format = "YYYY-MM-DD",
+    ),
+    cancerprimarycare_0_date=patients.with_these_clinical_events(
+        cancer_snomed_combined,
+        returning = "date",
+        on_or_before = "start_1_date - 1 day",
+        find_last_match_in_period = True,
+        date_format = "YYYY-MM-DD",
+    ),
+
+
+    # first cancer code after start_1_date
+    cancerhosp_1_date=patients.admitted_to_hospital(
+        returning = "date_admitted",
+        with_these_diagnoses = cancer_icd10,
+        on_or_after = "start_1_date",
+        find_first_match_in_period = True,
+        date_format = "YYYY-MM-DD",
+      ),
+    cancerprimarycare_1_date = patients.with_these_clinical_events(
+        cancer_snomed_combined,
+        returning = "date",
+        on_or_after = "start_1_date",
+        find_first_match_in_period = True,
+        date_format = "YYYY-MM-DD",
+      ),
   
 )
