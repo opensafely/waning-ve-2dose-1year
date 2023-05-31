@@ -87,12 +87,14 @@ data_long <- data_extract  %>%
     cols = -c(patient_id, start_1_date),
     values_drop_na = TRUE
     ) %>%
+  # remove number and _date from names
   mutate(across(name, ~str_remove(.x, "_\\d+"))) %>%
   mutate(across(name, ~str_remove(.x, "_date$"))) %>%
+  # rescale to days since start date (days=1 on start date)
   mutate(day = as.integer(value - (start_1_date-1))) %>%
   select(-c(start_1_date, value)) 
 
-# add postest stop times
+# define postest_end as 30 days after each postest
 data_long <- data_long %>%
   mutate(across(name, ~str_replace(.x, "postest", "postest_start"))) %>%
   bind_rows(
@@ -117,6 +119,7 @@ data_timevarying <- data_tte %>%
     tstop = day,
     ind_outcome = event(day, status)
   ) %>% 
+  # define time-varying variables
   tmerge(
     data1 = .,
     data2 = data_long,
