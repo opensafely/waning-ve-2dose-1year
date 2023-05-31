@@ -20,23 +20,36 @@ model_varlist <- readr::read_rds(
 outdir <- here::here("output", "propensity", "model")
 fs::dir_create(outdir)
 
-# read dataset
-data_propmodel <- read_rds(here::here("output", "propensity", "data", "data_propmodel.rds")) 
+# read data_timevarying
+data_timevarying <- read_rds(here::here("output", "propensity", "data", "data_timevarying.rds")) 
+
+# read baseline covariates
+data_covs <- readr::read_rds(here::here("output", "data", "data_all.rds")) %>%
+  right_join(data_timevarying %>% distinct(patient_id), by = "patient_id") %>%
+  mutate(vax2_date = start_1_date - 14) %>%
+  select(
+    patient_id, 
+    subgroup, jcvi_group, elig_date, vax2_date,
+    vax2_brand = arm, 
+    all_of(unname(unlist(model_varlist)))
+  ) %>%
+  mutate(across(vax2_brand, ~factor(.x)))
 
 # print mean ages
-data_propmodel %>%
+data_covs %>%
   group_by(subgroup) %>%
   summarise(mean(age)) %>%
   print()
 
-data_propmodel <- data_propmodel %>%
+data_propmodel <- data_covs %>%
+  left_join(data_timevarying, by = "patient_id") %>%
   # age mean centred within subgroups
   group_by(subgroup) %>%
   mutate(age_smc = age - mean(age), .after = "age") %>%
   ungroup() %>%
   select(-age) %>%
   # relevel imd so 3 is reference
-  mutate(imd = fct_relevel(imd, levels(data_propmodel$imd)[3])) %>%
+  mutate(imd = fct_relevel(imd, levels(data_covs$imd)[3])) %>%
   mutate(age_smc_squared = age_smc^2, .after = "age_smc") %>%
   group_split(subgroup) %>%
   as.list()
@@ -63,8 +76,9 @@ formula_prop <- formula(
             #   also only relevant for under 50s
             model_varlist$clinical[!(model_varlist$clinical %in% c("multimorb", "pregnancy"))],
             model_varlist$multimorb,
-            "endoflife", "postest",
-            "inhosp_planned", "inhosp_unplanned", "inhosp_covidunplanned"
+            "status_endoflife",# "status_cancer", 
+            "status_postest",
+            "status_planned", "status_unplanned", "status_covidunplanned"
           ),
           collapse = "+"
           ),
@@ -115,11 +129,11 @@ for (s in subgroup_labels) {
   tidy[[s]] <-
     broom.helpers::tidy_plus_plus(
       propmodel,
-      exponentiate = TRUE
+      exponentiate = TRUE,
     ) %>%
     transmute(
       model = s,
-      variable, label, reference_row, n_obs, n_event,
+      variable, label, reference_row, 
       estimate, std.error, conf.low, conf.high, statistic, p.value
     )
   
