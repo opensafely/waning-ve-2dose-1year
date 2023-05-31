@@ -17,11 +17,11 @@ model_varlist <- readr::read_rds(
 )
 
 # create output directory
-outdir <- here::here("output", "propensity", "model")
+outdir <- here::here("output", "dose3", "model")
 fs::dir_create(outdir)
 
 # read data_timevarying
-data_timevarying <- read_rds(here::here("output", "propensity", "data", "data_timevarying.rds")) 
+data_timevarying <- read_rds(here::here("output", "dose3", "data", "data_timevarying.rds")) 
 
 # read baseline covariates
 data_covs <- readr::read_rds(here::here("output", "data", "data_all.rds")) %>%
@@ -113,7 +113,7 @@ for (s in subgroup_labels) {
   
   write_rds(
     propmodel,
-    file.path(outdir, glue("propmodel_{s}.rds")),
+    file.path(outdir, glue("dose3model_{s}.rds")),
     compress = "gz"
   )
   
@@ -143,8 +143,8 @@ for (s in subgroup_labels) {
 
 glance %>%
   bind_rows() %>%
-  write_csv(file.path(outdir, "glance_propmodel.csv"))
+  write_csv(file.path(outdir, "glance_dose3model.csv"))
 
 tidy %>%
   bind_rows() %>%
-  write_csv(file.path(outdir, "tidy_propmodel.csv"))
+  write_csv(file.path(outdir, "tidy_dose3model.csv"))

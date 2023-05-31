@@ -1341,37 +1341,38 @@ actions:
         hr_vax_ci: output/release_objects/images/hr_vax_ci.png
 
   ## #################################### 
-  ## study definition for propensity model 
+  ## study definition for dose 3 model 
   ## #################################### 
 
-  generate_prop_data:
-    run: cohortextractor:latest generate_cohort --study-definition study_definition_prop
+  generate_timevarying_data:
+    run: cohortextractor:latest generate_cohort --study-definition study_definition_timevarying
       --output-format feather
     needs:
     - data_eligible_cde
     outputs:
       highly_sensitive:
-        cohort: output/input_prop.feather
+        cohort: output/input_timevarying.feather
 
-  data_propmodel:
-    run: r:latest analysis/propensity/data_propmodel.R
+  data_timevarying:
+    run: r:latest analysis/dose3/data_timevarying.R
     needs:
     - data_covariates_process
     - data_tte_process_BNT162b2
     - data_tte_process_ChAdOx1
-    - generate_prop_data
+    - generate_timevarying_data
     outputs:
       highly_sensitive:
-        data_propmodel: output/propensity/data/data_propmodel.rds
+        data_propmodel: output/dose3/data/data_timevarying.rds
 
-  fit_propmodel:
-    run: r:latest analysis/propensity/fit_propmodel.R
+  dose3_model:
+    run: r:latest analysis/dose3/dose3_model.R
     needs:
-    - data_propmodel
+    - data_covariates_process
+    - data_timevarying
     outputs:
       highly_sensitive:
-        propmodel: output/propensity/model/propmodel_*.rds
+        dose3_model: output/dose3/model/dose3_*.rds
       moderately_sensitive:
-        glance: output/propensity/model/glance_propmodel.csv
-        tidy: output/propensity/model/tidy_propmodel.csv
+        glance: output/dose3/model/glance_dose3model.csv
+        tidy: output/dose3/model/tidy_dose3model.csv
 

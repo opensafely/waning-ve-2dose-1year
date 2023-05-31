@@ -686,44 +686,45 @@ actions_list <- splice(
   ),
   
   comment("####################################", 
-          "study definition for propensity model",
+          "study definition for dose 3 model",
           "####################################"),
   
   action(
-    name = "generate_prop_data",
-    run = "cohortextractor:latest generate_cohort --study-definition study_definition_prop --output-format feather",
+    name = "generate_timevarying_data",
+    run = "cohortextractor:latest generate_cohort --study-definition study_definition_timevarying --output-format feather",
     needs = list("data_eligible_cde"),
     highly_sensitive = list(
-      cohort = "output/input_prop.feather"
+      cohort = "output/input_timevarying.feather"
     )
   ),
   
   action(
-    name = "data_propmodel",
-    run = "r:latest analysis/propensity/data_propmodel.R",
+    name = "data_timevarying",
+    run = "r:latest analysis/dose3/data_timevarying.R",
     needs = splice(
       "data_covariates_process",
       "data_tte_process_BNT162b2",
       "data_tte_process_ChAdOx1",
-      "generate_prop_data"
+      "generate_timevarying_data"
     ),
     highly_sensitive = list(
-      data_propmodel = "output/propensity/data/data_propmodel.rds"
+      data_propmodel = "output/dose3/data/data_timevarying.rds"
     )
   ),
   
   action(
-    name = "fit_propmodel",
-    run = "r:latest analysis/propensity/fit_propmodel.R",
+    name = "dose3_model",
+    run = "r:latest analysis/dose3/dose3_model.R",
     needs = splice(
-      "data_propmodel"
+      "data_covariates_process",
+      "data_timevarying"
     ),
     highly_sensitive = list(
-      propmodel = "output/propensity/model/propmodel_*.rds"
+      dose3_model = "output/dose3/model/dose3_*.rds"
     ),
     moderately_sensitive = list(
-      glance = "output/propensity/model/glance_propmodel.csv",
-      tidy = "output/propensity/model/tidy_propmodel.csv"
+      glance = "output/dose3/model/glance_dose3model.csv",
+      tidy = "output/dose3/model/tidy_dose3model.csv"
     )
   )
   

@@ -24,7 +24,7 @@ model_varlist <- readr::read_rds(
 )
 
 # create output directory
-outdir <- here::here("output", "propensity", "data")
+outdir <- here::here("output", "dose3", "data")
 fs::dir_create(outdir)
 
 # load data ----
