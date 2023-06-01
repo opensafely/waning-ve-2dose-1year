@@ -67,7 +67,7 @@ data_extract <- arrow::read_feather(here::here("output", "input_prop.feather")) 
   # only keep those in both datasets
   inner_join(data_included, by = "patient_id") %>%
   # for now only flag a cancer diagnosis in the 3 years before start_1_date
-  mutate(cancer_0_date = max(cancerhosp_0_date, cancerprimarycare_0_date)) %>%
+  mutate(cancer_0_date = pmax(cancerhosp_0_date, cancerprimarycare_0_date, na.rm=TRUE)) %>%
   mutate(
     across(
       cancer_0_date, 
