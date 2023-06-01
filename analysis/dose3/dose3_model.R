@@ -41,7 +41,7 @@ data_covs %>%
   summarise(mean(age)) %>%
   print()
 
-data_propmodel <- data_covs %>%
+data_dose3model <- data_covs %>%
   left_join(data_timevarying, by = "patient_id") %>%
   # age mean centred within subgroups
   group_by(subgroup) %>%
@@ -54,9 +54,42 @@ data_propmodel <- data_covs %>%
   group_split(subgroup) %>%
   as.list()
 
+# data summaries ----
+for (i in seq_along(data_dose3model)) {
+  
+  cat(
+    "\n--------------------------\n",
+    "Subgroup: ",
+    data_dose3model[[i]] %>% distinct(subgroup) %>% pull(subgroup) %>% as.character(),
+    "--------------------------\n",
+  )
+  
+  cat("\nProportion of follow-up time spend in each status:\n")
+  data_dose3model[[i]] %>%
+    select(starts_with("status_")) %>%
+    pivot_longer(cols = everything()) %>%
+    group_by(name, value) %>%
+    count() %>%
+    ungroup() %>%
+    pivot_wider(names_from = value, values_from = n, values_fill = 0) %>%
+    mutate(prop1 = round(`1`/(`0`+`1`),3)) %>%
+    print()
+    
+  cat("\nNumber of events in each status:\n")
+  data_dose3model[[i]] %>%
+    filter(ind_outcome==1) %>%
+    select(starts_with("status_")) %>%
+    pivot_longer(cols = everything()) %>%
+    filter(value == 1) %>%
+    group_by(name) %>% 
+    count() %>% 
+    print()
+  
+}
+
 # define model formula ----
 
-formula_prop <- formula(
+formula_dose3 <- formula(
   Surv(tstart, tstop, ind_outcome, type = "counting") ~ 
     # stratify by jcvi_group and elig_date
     strata(jcvi_group, elig_date) + ns(vax2_date, 3)
@@ -76,7 +109,7 @@ formula_prop <- formula(
             #   also only relevant for under 50s
             model_varlist$clinical[!(model_varlist$clinical %in% c("multimorb", "pregnancy"))],
             model_varlist$multimorb,
-            "status_endoflife",# "status_cancer", 
+            "status_endoflife", "status_cancer", 
             "status_postest",
             "status_planned", "status_unplanned", "status_covidunplanned"
           ),
@@ -88,7 +121,7 @@ formula_prop <- formula(
   )
 
 # print formula to check correct
-print(formula_prop)
+print(formula_dose3)
 
 # fit models separately within subgroups
 glance <- list()
@@ -99,36 +132,36 @@ for (s in subgroup_labels) {
   
   # add primary course brand to model if subgroups 1 or 2
   if (s %in% c(1,2)) {
-    formula_subgroup <- formula_prop %>%
+    formula_subgroup <- formula_dose3 %>%
       update.formula(formula(. ~ . + vax2_brand))
   } else {
-    formula_subgroup <- formula_prop
+    formula_subgroup <- formula_dose3
   }
   
-  propmodel <- coxph(
+  dose3model <- coxph(
     formula = formula_subgroup,
-    data = data_propmodel[[s]],
+    data = data_dose3model[[s]],
     na.action = "na.fail"
   )
   
   write_rds(
-    propmodel,
+    dose3model,
     file.path(outdir, glue("dose3model_{s}.rds")),
     compress = "gz"
   )
   
   glance[[s]] <-
-    broom::glance(propmodel) %>%
+    broom::glance(dose3model) %>%
     add_column(
       model = s,
-      convergence = propmodel$info[["convergence"]],
-      ram = format(object.size(propmodel), units="GB", standard="SI", digits=3L),
+      convergence = dose3model$info[["convergence"]],
+      ram = format(object.size(dose3model), units="GB", standard="SI", digits=3L),
       .before = 1
     )
   
   tidy[[s]] <-
     broom.helpers::tidy_plus_plus(
-      propmodel,
+      dose3model,
       exponentiate = TRUE,
     ) %>%
     transmute(
