@@ -46,3 +46,8 @@ opensafely/no-longer-housebound/29a88ca6
 opensafely/influenza-vaccination/2020-05-12
 opensafely/influenza-vaccination-clinical-codes-given/2020-05-21
 opensafely/influenza-vaccination-clinical-codes-not-given/2020-05-19
+
+user/elsie_horne/cancer_icd10/72c5c151
+opensafely/cancer-excluding-lung-and-haematological-snomed/2020-04-15
+opensafely/haematological-cancer-snomed/2020-04-15
+opensafely/lung-cancer-snomed/2020-04-15

@@ -683,6 +683,49 @@ actions_list <- splice(
     moderately_sensitive = list(
       hr_vax_ci = "output/release_objects/images/hr_vax_ci.png"
     )
+  ),
+  
+  comment("####################################", 
+          "study definition for dose 3 model",
+          "####################################"),
+  
+  action(
+    name = "generate_timevarying_data",
+    run = "cohortextractor:latest generate_cohort --study-definition study_definition_timevarying --output-format feather",
+    needs = list("data_eligible_cde"),
+    highly_sensitive = list(
+      cohort = "output/input_timevarying.feather"
+    )
+  ),
+  
+  action(
+    name = "data_timevarying",
+    run = "r:latest analysis/dose3/data_timevarying.R",
+    needs = splice(
+      "data_covariates_process",
+      "data_tte_process_BNT162b2",
+      "data_tte_process_ChAdOx1",
+      "generate_timevarying_data"
+    ),
+    highly_sensitive = list(
+      data_propmodel = "output/dose3/data/data_timevarying.rds"
+    )
+  ),
+  
+  action(
+    name = "dose3_model",
+    run = "r:latest analysis/dose3/dose3_model.R",
+    needs = splice(
+      "data_covariates_process",
+      "data_timevarying"
+    ),
+    highly_sensitive = list(
+      dose3_model = "output/dose3/model/dose3_*.rds"
+    ),
+    moderately_sensitive = list(
+      glance = "output/dose3/model/glance_dose3model.csv",
+      tidy = "output/dose3/model/tidy_dose3model.csv"
+    )
   )
   
 )

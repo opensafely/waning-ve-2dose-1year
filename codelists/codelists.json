@@ -183,8 +183,8 @@
     "primis-covid19-vacc-uptake-eth2001.csv": {
       "id": "primis-covid19-vacc-uptake/eth2001/v1",
       "url": "https://codelists.opensafely.org/codelist/primis-covid19-vacc-uptake/eth2001/v1/",
-      "downloaded_at": "2021-10-28 08:04:26.354844Z",
-      "sha": "36e4eacba898e6ec72da8ff66e8c673bfd9aa8e4"
+      "downloaded_at": "2023-05-30 08:43:26.424190Z",
+      "sha": "2ff9aea91a05f41fe911a885eee50d2494247d58"
     },
     "primis-covid19-vacc-uptake-pregdel.csv": {
       "id": "primis-covid19-vacc-uptake/pregdel/v1.2.1",
@@ -269,6 +269,30 @@
       "url": "https://codelists.opensafely.org/codelist/opensafely/influenza-vaccination-clinical-codes-not-given/2020-05-19/",
       "downloaded_at": "2021-11-01 14:54:29.700255Z",
       "sha": "db68fd1368358f1ecbbc006c83419b3b47bcb82c"
+    },
+    "user-elsie_horne-cancer_icd10.csv": {
+      "id": "user/elsie_horne/cancer_icd10/72c5c151",
+      "url": "https://codelists.opensafely.org/codelist/user/elsie_horne/cancer_icd10/72c5c151/",
+      "downloaded_at": "2023-05-30 08:43:31.633219Z",
+      "sha": "d9e41efec81c5d1c839010cdb9953ee77a5d8079"
+    },
+    "opensafely-cancer-excluding-lung-and-haematological-snomed.csv": {
+      "id": "opensafely/cancer-excluding-lung-and-haematological-snomed/2020-04-15",
+      "url": "https://codelists.opensafely.org/codelist/opensafely/cancer-excluding-lung-and-haematological-snomed/2020-04-15/",
+      "downloaded_at": "2023-05-30 08:43:32.204604Z",
+      "sha": "d43aff12fcb3b404c635e24f964ba2a368c96c98"
+    },
+    "opensafely-haematological-cancer-snomed.csv": {
+      "id": "opensafely/haematological-cancer-snomed/2020-04-15",
+      "url": "https://codelists.opensafely.org/codelist/opensafely/haematological-cancer-snomed/2020-04-15/",
+      "downloaded_at": "2023-05-30 08:43:32.548288Z",
+      "sha": "c87e49e8d2965bc489f9baba670783f15ce73896"
+    },
+    "opensafely-lung-cancer-snomed.csv": {
+      "id": "opensafely/lung-cancer-snomed/2020-04-15",
+      "url": "https://codelists.opensafely.org/codelist/opensafely/lung-cancer-snomed/2020-04-15/",
+      "downloaded_at": "2023-05-30 08:43:32.875041Z",
+      "sha": "f0debdf1c968242fa8790cd0b773662b8e169f43"
     }
   }
 }

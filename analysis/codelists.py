@@ -323,3 +323,35 @@ midazolam_codes = codelist_from_csv(
     system="snomed",
     column="dmd_id",   
 )
+
+# cancer (any malignant neoplasm icd 10 code)
+cancer_icd10 = codelist_from_csv(
+    "codelists/user-elsie_horne-cancer_icd10.csv",
+    system="icd10",
+    column="code",
+)
+
+# cancer snomed codes
+cancer_haem_snomed=codelist_from_csv(
+    "codelists/opensafely-haematological-cancer-snomed.csv",
+    system="snomed",
+    column="id",
+)
+
+cancer_nonhaem_nonlung_snomed=codelist_from_csv(
+    "codelists/opensafely-cancer-excluding-lung-and-haematological-snomed.csv",
+    system="snomed",
+    column="id",
+)
+
+cancer_lung_snomed=codelist_from_csv(
+    "codelists/opensafely-lung-cancer-snomed.csv",
+    system="snomed",
+    column="id",
+)
+
+cancer_snomed_combined=combine_codelists(
+    cancer_haem_snomed, 
+    cancer_nonhaem_nonlung_snomed, 
+    cancer_lung_snomed
+)
