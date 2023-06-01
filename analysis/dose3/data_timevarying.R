@@ -157,10 +157,10 @@ data_timevarying <- data_tte %>%
         name=="discharged_covidunplanned" ~ 0L, 
         TRUE ~NA_integer_
       )
-    )
+    ),
+    # initialise all with 0, otherwise they would have been excluded
+    options=list(tdcstart=0L)
   ) %>% 
-  # if it's missing it must be absent, otherwise they would have been excluded
-  mutate(across(starts_with("status_"), ~replace_na(data = .x, replace = 0L))) %>%
   as_tibble()
 
 # save dataset
