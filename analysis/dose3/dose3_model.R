@@ -51,21 +51,23 @@ data_dose3model <- data_covs %>%
   # relevel imd so 3 is reference
   mutate(imd = fct_relevel(imd, levels(data_covs$imd)[3])) %>%
   mutate(age_smc_squared = age_smc^2, .after = "age_smc") %>%
+  mutate(across(subgroup, ~factor(.x, levels = subgroups))) %>%
+  arrange(subgroup) %>%
   group_split(subgroup) %>%
   as.list()
 
 # data summaries ----
-for (i in seq_along(data_dose3model)) {
+for (s in seq_along(data_dose3model)) {
   
   cat(
     "\n--------------------------\n",
     "Subgroup: ",
-    data_dose3model[[i]] %>% distinct(subgroup) %>% pull(subgroup) %>% as.character(),
-    "--------------------------\n",
+    subgroups[s],
+    "\n--------------------------\n"
   )
   
   cat("\nProportion of follow-up time spend in each status:\n")
-  data_dose3model[[i]] %>%
+  data_dose3model[[s]] %>%
     select(starts_with("status_")) %>%
     pivot_longer(cols = everything()) %>%
     group_by(name, value) %>%
@@ -76,7 +78,7 @@ for (i in seq_along(data_dose3model)) {
     print()
     
   cat("\nNumber of events in each status:\n")
-  data_dose3model[[i]] %>%
+  data_dose3model[[s]] %>%
     filter(ind_outcome==1) %>%
     select(starts_with("status_")) %>%
     pivot_longer(cols = everything()) %>%
@@ -88,7 +90,6 @@ for (i in seq_along(data_dose3model)) {
 }
 
 # define model formula ----
-
 formula_dose3 <- formula(
   Surv(tstart, tstop, ind_outcome, type = "counting") ~ 
     # stratify by jcvi_group and elig_date
@@ -121,14 +122,16 @@ formula_dose3 <- formula(
   )
 
 # print formula to check correct
+cat("\n------\nModel formula:\n------\n")
 print(formula_dose3)
+cat("\nNote: `vax2_brand` added later for subgroups 1&2.\n")
 
 # fit models separately within subgroups
 glance <- list()
 tidy <- list()
-for (s in subgroup_labels) {
+for (s in seq_along(data_dose3model)) {
   
-  cat("Subgroup ", subgroups[s], ": started.\n")
+  cat("\nSubgroup ", subgroups[s], ":\nstarted...\n")
   
   # add primary course brand to model if subgroups 1 or 2
   if (s %in% c(1,2)) {
@@ -137,6 +140,9 @@ for (s in subgroup_labels) {
   } else {
     formula_subgroup <- formula_dose3
   }
+  
+  # print warnings from coxph as they occur
+  options(warn = 1)
   
   dose3model <- coxph(
     formula = formula_subgroup,
@@ -170,7 +176,7 @@ for (s in subgroup_labels) {
       estimate, std.error, conf.low, conf.high, statistic, p.value
     )
   
-  cat("Subgroup ", subgroups[s], ": completed.\n")
+  cat("...completed.\n")
   
 }
 
