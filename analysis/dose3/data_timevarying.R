@@ -157,17 +157,17 @@ data_timevarying <- data_tte %>%
     data1 = .,
     data2 = data_long,
     id = patient_id,
+    dummy = event(day, name == "dummy"),
+    status_endoflife = cumtdc(day, as.integer(name == "endoflife")),
+    status_cancer = cumtdc(day, as.integer(name == "cancer")),
     status_postest = tdc(
       day, 
       case_when(
         name=="postest_start" ~ 1L, 
         name=="postest_end" ~ 0L, 
         TRUE ~NA_integer_
-        )
-      ),
-    dummy = event(day, name == "dummy"),
-    status_endoflife = event(day, as.integer(name == "endoflife")),
-    status_cancer = event(day, as.integer(name == "cancer")),
+      )
+    ),
     status_planned = tdc(
       day, 
       case_when(
@@ -195,6 +195,7 @@ data_timevarying <- data_tte %>%
     # initialise all with 0, otherwise they would have been excluded
     options=list(tdcstart=0L)
   ) %>%
+  select(-dummy) %>%
   # get rid of all periods that start before start_1_date
   filter(tstart >= 0) %>%
   as_tibble()
