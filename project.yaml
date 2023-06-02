@@ -1363,6 +1363,8 @@ actions:
     outputs:
       highly_sensitive:
         data_propmodel: output/dose3/data/data_timevarying.rds
+      moderately_sensitive:
+        data_properties: output/dose3/data/*.txt
 
   dose3_model:
     run: r:latest analysis/dose3/dose3_model.R

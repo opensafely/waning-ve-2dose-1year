@@ -9,6 +9,7 @@ library(survival)
 
 # source functions
 source(here::here("analysis", "functions", "data_process_functions.R"))
+source(here::here("analysis", "functions", "data_properties.R"))
 
 # define additional functions
 gluec <- function(x) as.character(glue(x))
@@ -60,14 +61,22 @@ data_tte <- readr::read_rds(here::here("output", "data", "data_all.rds")) %>%
   ) 
 
 # load extracted data
-data_extract <- arrow::read_feather(here::here("output", "input_timevarying.feather")) %>%
+data_extract0 <- arrow::read_feather(here::here("output", "input_timevarying.feather")) %>%
   # because date types are not returned consistently by cohort extractor
   mutate(
     across(
       c(contains("_date")), 
       ~ floor_date(as.Date(., format="%Y-%m-%d"), unit = "days")
     )
-  ) %>%
+  )
+
+# save data properties
+data_properties(
+  data = data_extract0,
+  path = outdir
+)
+
+data_extract <- data_extract0 %>%
   # only keep those in both datasets
   inner_join(data_included, by = "patient_id") %>%
   # for now only flag a cancer diagnosis in the 3 years before start_1_date
@@ -83,6 +92,13 @@ data_extract <- arrow::read_feather(here::here("output", "input_timevarying.feat
       )
     ) %>%
   select(-matches("cancer\\w+_\\d+_date"))
+
+# save data properties
+data_properties(
+  data = data_extract,
+  path = outdir
+)
+
 
 # process_data ----
 
@@ -166,6 +182,12 @@ data_timevarying <- data_tte %>%
     options=list(tdcstart=0L)
   ) %>% 
   as_tibble()
+
+# save data properties
+data_properties(
+  data = data_timevarying,
+  path = outdir
+)
 
 # save dataset
 write_rds(

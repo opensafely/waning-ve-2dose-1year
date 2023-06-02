@@ -709,6 +709,9 @@ actions_list <- splice(
     ),
     highly_sensitive = list(
       data_propmodel = "output/dose3/data/data_timevarying.rds"
+    ),
+    moderately_sensitive = list(
+      data_properties = "output/dose3/data/*.txt"
     )
   ),
   
