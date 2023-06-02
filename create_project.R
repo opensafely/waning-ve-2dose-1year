@@ -720,7 +720,7 @@ actions_list <- splice(
       "data_timevarying"
     ),
     highly_sensitive = list(
-      dose3_model = "output/dose3/model/dose3_*.rds"
+      dose3_model = "output/dose3/model/dose3*.rds"
     ),
     moderately_sensitive = list(
       glance = "output/dose3/model/glance_dose3model.csv",

@@ -1371,7 +1371,7 @@ actions:
     - data_timevarying
     outputs:
       highly_sensitive:
-        dose3_model: output/dose3/model/dose3_*.rds
+        dose3_model: output/dose3/model/dose3*.rds
       moderately_sensitive:
         glance: output/dose3/model/glance_dose3model.csv
         tidy: output/dose3/model/tidy_dose3model.csv

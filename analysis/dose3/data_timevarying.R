@@ -56,7 +56,7 @@ data_tte <- readr::read_rds(here::here("output", "data", "data_all.rds")) %>%
   ) 
 
 # load extracted data
-data_extract <- arrow::read_feather(here::here("output", "input_prop.feather")) %>%
+data_extract <- arrow::read_feather(here::here("output", "input_timevarying.feather")) %>%
   # because date types are not returned consistently by cohort extractor
   mutate(
     across(
