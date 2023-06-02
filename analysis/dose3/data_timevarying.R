@@ -127,6 +127,12 @@ data_long <- data_long %>%
   ) %>%
   arrange(patient_id, day)
 
+# save data properties
+data_properties(
+  data = data_long,
+  path = outdir
+)
+
 data_timevarying <- data_tte %>%
   select(patient_id) %>%
   arrange(patient_id) %>%
