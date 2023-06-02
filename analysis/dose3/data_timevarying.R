@@ -125,6 +125,11 @@ data_long <- data_long %>%
         day = day+30
         )
   ) %>%
+  bind_rows(
+    # adding this dummy category is a hack to make sure these is always
+    # a period for every patient starting at start=0
+    data_tte %>% distinct(patient_id) %>% mutate(name = "dummy", day = 0)
+    ) %>%
   arrange(patient_id, day)
 
 # save data properties
@@ -141,7 +146,9 @@ data_timevarying <- data_tte %>%
     data1 = .,
     data2 = data_tte, 
     id = patient_id,
-    tstart = 0,
+    # because the earliest date will be for cancer, 
+    # which must be <=3*365 days before start_1_date 
+    tstart = - 3*365 - 1,
     tstop = day,
     ind_outcome = event(day, status)
   ) %>% 
@@ -158,6 +165,7 @@ data_timevarying <- data_tte %>%
         TRUE ~NA_integer_
         )
       ),
+    dummy = event(day, name == "dummy"),
     status_endoflife = event(day, as.integer(name == "endoflife")),
     status_cancer = event(day, as.integer(name == "cancer")),
     status_planned = tdc(
@@ -186,7 +194,9 @@ data_timevarying <- data_tte %>%
     ),
     # initialise all with 0, otherwise they would have been excluded
     options=list(tdcstart=0L)
-  ) %>% 
+  ) %>%
+  # get rid of all periods that start before start_1_date
+  filter(tstart >= 0) %>%
   as_tibble()
 
 # save data properties
