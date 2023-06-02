@@ -33,11 +33,15 @@ fs::dir_create(outdir)
 data_included <- lapply(
   subgroup_labels,
   function(x) {
-    comparison <- "both"
+    df <- list()
     # only one brand used in subgroups 3 and 4
-    if (x==3) comparison <- "ChAdOx1"
-    if (x==4) comparison <- "BNT162b2"
-    readr::read_rds(here::here("output", "tte", "data", glue("data_tte_{comparison}_{x}_coviddeath.rds"))) %>%
+    if (x %in% c(1, 2, 3)) {
+      df[[1]] <- readr::read_rds(here::here("output", "tte", "data", glue("data_tte_ChAdOx1_{x}_coviddeath.rds")))
+    } 
+    if (x %in% c(1, 2, 4)) {
+      df[[2]] <- readr::read_rds(here::here("output", "tte", "data", glue("data_tte_BNT162b2_{x}_coviddeath.rds")))
+    } 
+     bind_rows(df) %>%
       filter(arm != "unvax") %>%
       distinct(patient_id)
   }
