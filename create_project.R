@@ -727,7 +727,9 @@ actions_list <- splice(
     ),
     moderately_sensitive = list(
       glance = "output/dose3/model/glance_dose3model.csv",
-      tidy = "output/dose3/model/tidy_dose3model.csv"
+      tidy = "output/dose3/model/tidy_dose3model.csv",
+      hrs_csv = "output/dose3/model/hrs_*.csv",
+      hrs_png = "output/dose3/model/hrs_*.png"
     )
   )
   
