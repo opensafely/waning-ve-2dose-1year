@@ -26,7 +26,6 @@ create_plot <- function(vars_group) {
   }
   if (vars_group == "baseline") {
     plot_vars <- c(
-      "Age*" = "age",
       "Sex" = "sex",
       "IMD Quintile" = "imd", 
       "Ethnicity" = "ethnicity", 
@@ -46,7 +45,7 @@ create_plot <- function(vars_group) {
   }
   
   plot_data <- tidy_dose3model %>%
-    filter(!str_detect(variable, "^ns")) %>%
+    filter(!str_detect(variable, "^ns|^poly")) %>%
     mutate(
       subgroup = factor(
         model,
@@ -54,10 +53,7 @@ create_plot <- function(vars_group) {
         labels = str_wrap(subgroups, width = 25),
       )
     ) %>%
-    mutate(across(variable, ~if_else(str_detect(.x, "age_smc"), "age", .x))) %>%
     mutate(across(label, ~if_else(variable==.x | str_detect(.x, "TRUE$"), "", .x))) %>%
-    mutate(across(label, ~if_else(.x=="age_smc", "Degree=1", .x))) %>%
-    mutate(across(label, ~if_else(.x=="age_smc_squared", "Degree=2", .x))) %>%
     mutate(across(reference_row, ~replace_na(.x, FALSE))) %>%
     filter(variable %in% plot_vars) %>%
     mutate(across(variable, ~factor(.x, levels = unname(plot_vars), labels = names(plot_vars)))) %>%
