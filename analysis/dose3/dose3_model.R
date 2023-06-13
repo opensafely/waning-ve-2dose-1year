@@ -50,7 +50,16 @@ data_dose3model <- data_covs %>%
   group_split(subgroup) %>%
   as.list()
 
-# data summaries ----
+data_dose3model %>%
+  bind_rows() %>%
+  mutate(across(subgroup, as.integer)) %>%
+  group_by(subgroup, age) %>%
+  count() %>%
+  arrange(subgroup, age) %>%
+  write_csv(file.path(outdir, "helperfile_agecounts.csv"))
+
+if (FALSE) {
+ # data summaries ----
 for (s in seq_along(data_dose3model)) {
   
   cat(
@@ -251,3 +260,5 @@ hrs_vax2_date %>%
   write_csv(
   file.path(outdir, "hrs_vax2_date.csv")
 )
+ 
+}
