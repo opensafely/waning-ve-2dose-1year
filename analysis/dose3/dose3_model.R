@@ -43,14 +43,8 @@ data_covs %>%
 
 data_dose3model <- data_covs %>%
   left_join(data_timevarying, by = "patient_id") %>%
-  # age mean centred within subgroups
-  group_by(subgroup) %>%
-  mutate(age_smc = age - mean(age), .after = "age") %>%
-  ungroup() %>%
-  select(-age) %>%
   # relevel imd so 3 is reference
   mutate(imd = fct_relevel(imd, levels(data_covs$imd)[3])) %>%
-  mutate(age_smc_squared = age_smc^2, .after = "age_smc") %>%
   mutate(across(subgroup, ~factor(.x, levels = subgroups))) %>%
   arrange(subgroup) %>%
   group_split(subgroup) %>%
@@ -92,8 +86,8 @@ for (s in seq_along(data_dose3model)) {
 # define model formula ----
 formula_dose3 <- formula(
   Surv(tstart, tstop, ind_outcome, type = "counting") ~ 
-    # stratify by jcvi_group and elig_date
-    strata(jcvi_group, elig_date) + ns(vax2_date, 3)
+    # stratify by jcvi_group and elig_date, add vax2 date and age
+    strata(jcvi_group, elig_date) + ns(vax2_date, 3) + poly(age, 2)
   ) %>%
   # add covariates
   update.formula(
@@ -102,7 +96,6 @@ formula_dose3 <- formula(
         ". ~ .",
         str_c(
           c(
-            "age_smc", "age_smc_squared",
             model_varlist$demographic[model_varlist$demographic != "age"],
             # - remove multimorb because including individual diagnoses
             # - remove pregnancy because only defined at baseline, 
@@ -129,6 +122,8 @@ cat("\nNote: `vax2_brand` added later for subgroups 1&2.\n")
 # fit models separately within subgroups
 glance <- list()
 tidy <- list()
+hrs_age <- list()
+hrs_vax2_date <- list()
 for (s in seq_along(data_dose3model)) {
   
   cat("\nSubgroup ", subgroups[s], ":\nstarted...\n")
@@ -156,6 +151,60 @@ for (s in seq_along(data_dose3model)) {
     compress = "gz"
   )
   
+  # get predictions for vax2_date and age for plotting
+  # code adapted from https://cran.r-project.org/web/packages/survival/vignettes/splines.pdf
+  ptemp <- termplot(dose3model, se=TRUE, plot=FALSE, terms=1:2)
+  
+  # function for creating the data
+  create_data <- function(var) {
+    
+    varterm <- as_tibble(ptemp[[var]])
+    # get prediction for median age
+    median_val <- median(data_dose3model[[s]][[var]])
+    centre <- varterm %>% filter(x == median_val) %>% pull(y)
+    data <- varterm %>%
+      mutate(
+        y_trans = y,
+        conf.ll = y-(1.96*se),
+        conf.ul = y+(1.96*se)
+      ) %>%
+      # rescale y relative to value at median_val
+      mutate(across(c(y_trans, conf.ll, conf.ul), ~exp(.x - centre))) 
+    
+    attributes(data)$median_val <- median_val
+    attributes(data)$var <- var
+    
+    return(data)
+    
+  }
+  
+  hrs_age[[s]] <- create_data("age")
+  
+  hrs_vax2_date[[s]] <- create_data("vax2_date")
+
+  create_plot <- function(data) {
+    data %>%
+      ggplot(aes(x = x)) +
+      geom_ribbon(aes(ymin = conf.ll, ymax = conf.ul), alpha = 0.2) +
+      geom_line(aes(y = y_trans)) +
+      geom_vline(xintercept = attributes(data)$median_val, linetype = "dashed") +
+      scale_y_log10() +
+      labs(x = attributes(data)$var, y = "HR") +
+      theme_bw() 
+  }
+  
+  hrs_age[[s]] %>% 
+    create_plot() %>%
+    ggsave(
+      filename = file.path(outdir, glue("hrs_age_{s}.png"))
+    )
+  hrs_vax2_date[[s]] %>% 
+    create_plot() %>%
+    ggsave(
+      filename = file.path(outdir, glue("hrs_vax2_date_{s}.png"))
+    )
+  
+  # summary datasets
   glance[[s]] <-
     broom::glance(dose3model) %>%
     add_column(
@@ -180,6 +229,9 @@ for (s in seq_along(data_dose3model)) {
   
 }
 
+
+# collapse outputs and save
+
 glance %>%
   bind_rows() %>%
   write_csv(file.path(outdir, "glance_dose3model.csv"))
@@ -187,3 +239,15 @@ glance %>%
 tidy %>%
   bind_rows() %>%
   write_csv(file.path(outdir, "tidy_dose3model.csv"))
+
+hrs_age %>% 
+  bind_rows(.id = "subgroup") %>%
+  write_csv(
+    file.path(outdir, "hrs_age.csv")
+  )
+
+hrs_vax2_date %>% 
+  bind_rows(.id = "subgroup") %>%
+  write_csv(
+  file.path(outdir, "hrs_vax2_date.csv")
+)
