@@ -46,10 +46,13 @@ data_dose3model <- data_covs %>%
   # relevel imd so 3 is reference
   mutate(imd = fct_relevel(imd, levels(data_covs$imd)[3])) %>%
   mutate(across(subgroup, ~factor(.x, levels = subgroups))) %>%
+  # group extreme ages to reduce risk of statistical discolsure
+  mutate(across(age, ~if_else(.x > 105, 105L, as.integer(.x)))) %>%
   arrange(subgroup) %>%
   group_split(subgroup) %>%
   as.list()
 
+# check number of individuals at each age to make sure none < 6
 data_dose3model %>%
   bind_rows() %>%
   mutate(across(subgroup, as.integer)) %>%
@@ -58,39 +61,39 @@ data_dose3model %>%
   arrange(subgroup, age) %>%
   write_csv(file.path(outdir, "helperfile_agecounts.csv"))
 
-if (FALSE) {
+# if (FALSE) {
  # data summaries ----
-for (s in seq_along(data_dose3model)) {
-  
-  cat(
-    "\n--------------------------\n",
-    "Subgroup: ",
-    subgroups[s],
-    "\n--------------------------\n"
-  )
-  
-  cat("\nProportion of follow-up time spend in each status:\n")
-  data_dose3model[[s]] %>%
-    select(starts_with("status_")) %>%
-    pivot_longer(cols = everything()) %>%
-    group_by(name, value) %>%
-    count() %>%
-    ungroup() %>%
-    pivot_wider(names_from = value, values_from = n, values_fill = 0) %>%
-    mutate(prop1 = round(`1`/(`0`+`1`),3)) %>%
-    print()
-    
-  cat("\nNumber of events in each status:\n")
-  data_dose3model[[s]] %>%
-    filter(ind_outcome==1) %>%
-    select(starts_with("status_")) %>%
-    pivot_longer(cols = everything()) %>%
-    filter(value == 1) %>%
-    group_by(name) %>% 
-    count() %>% 
-    print()
-  
-}
+# for (s in seq_along(data_dose3model)) {
+#   
+#   cat(
+#     "\n--------------------------\n",
+#     "Subgroup: ",
+#     subgroups[s],
+#     "\n--------------------------\n"
+#   )
+#   
+#   cat("\nProportion of follow-up time spend in each status:\n")
+#   data_dose3model[[s]] %>%
+#     select(starts_with("status_")) %>%
+#     pivot_longer(cols = everything()) %>%
+#     group_by(name, value) %>%
+#     count() %>%
+#     ungroup() %>%
+#     pivot_wider(names_from = value, values_from = n, values_fill = 0) %>%
+#     mutate(prop1 = round(`1`/(`0`+`1`),3)) %>%
+#     print()
+#     
+#   cat("\nNumber of events in each status:\n")
+#   data_dose3model[[s]] %>%
+#     filter(ind_outcome==1) %>%
+#     select(starts_with("status_")) %>%
+#     pivot_longer(cols = everything()) %>%
+#     filter(value == 1) %>%
+#     group_by(name) %>% 
+#     count() %>% 
+#     print()
+#   
+# }
 
 # define model formula ----
 formula_dose3 <- formula(
@@ -261,4 +264,4 @@ hrs_vax2_date %>%
   file.path(outdir, "hrs_vax2_date.csv")
 )
  
-}
+# }
