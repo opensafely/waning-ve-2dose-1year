@@ -187,8 +187,131 @@ primary_brand_y1 <- list(breaks = c(0.2, 0.5, 1, 2, 5),
 anytest_y1 <- list(breaks = c(0.5, 1, 2, 5), 
                    limits = c(0.5, 5))
 
-################################################################################
-# vaccine vs unvaccinated
+# cumulative incidence (plot A)
+
+# scale for x-axis
+x_breaks <- seq(3, 48, 4)
+x_labels <- as.character(x_breaks)
+alpha_area <- 0.5
+# create plot
+# max_nrisk <- 1000000#max(survtable_redacted$n.risk)
+
+plot_ci_data <- survtable_redacted %>%
+  filter(
+    !(as.integer(subgroup) == 3L & arm == "BNT162b2"),
+    !(as.integer(subgroup) == 4L & arm == "ChAdOx1")
+  ) %>%
+  filter(time <= 48) %>%
+  mutate(across(subgroup,
+                factor,
+                levels = levels(survtable_redacted$subgroup),
+                labels = str_replace(str_replace(levels(survtable_redacted$subgroup), "\\n", " "), "and", "&")
+  )) %>%
+  mutate(
+    variant = factor(
+      case_when(
+        as.integer(subgroup) == 1L & time <= 1*4 ~ "alpha",
+        as.integer(subgroup) == 1L & time < 9*4 ~ "delta",
+        as.integer(subgroup) == 1L ~ "omicron",
+        as.integer(subgroup) == 2L & time < 8*4 ~ "delta",
+        as.integer(subgroup) == 2L ~ "omicron",
+        as.integer(subgroup) == 3L & time < 7*4 ~ "delta",
+        as.integer(subgroup) == 3L ~ "omicron",
+        as.integer(subgroup) == 4L & time < 4*4 ~ "delta",
+        as.integer(subgroup) == 4L ~ "omicron",
+        TRUE ~ NA_character_
+      ),
+      levels = variants
+    )
+  ) %>%
+  mutate(
+    c.inc_alphadelta = if_else(variant %in% c("alpha", "delta"), c.inc, NA_real_),
+    c.inc_omicron = if_else(variant %in% c("omicron"), c.inc, NA_real_)
+  ) %>%
+  mutate(y = str_wrap("Cumulative incidence of subsequent dose", 14))
+
+plot_ci <- plot_ci_data %>%
+  ggplot(aes(
+    x = time,
+    colour = arm
+  )) +
+  geom_line(
+    aes(y = c.inc_alphadelta),
+    linetype = "dashed",
+  ) +
+  geom_line(
+    aes(y = c.inc_omicron),
+  ) +
+  facet_grid(
+    . ~ subgroup,
+    switch = "y",
+    space = "free_x"
+  ) +
+  scale_x_continuous(
+    expand = c(0,0),
+    breaks = seq(2,50,4),
+    labels = NULL
+  ) +
+  scale_y_continuous(
+    # name = "Millions of\npeople at risk\n(shaded)",
+    name = str_wrap("Cumulative incidence of subsequent dose", 14),
+    limits = c(0,1),
+    labels = format(seq(0,1,0.25), nsmall=2),
+    oob = scales::oob_keep
+  ) +
+  scale_colour_manual(
+    name = NULL,
+    values = palette_adj,
+    guide = "none"
+  ) +
+  labs(x = NULL) +
+  theme_bw() +
+  theme(
+    
+    panel.border = element_blank(),
+    axis.line.y = element_line(colour = "black"),
+    
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(
+      size=8,
+      angle = 90
+    ),
+    
+    axis.title.x = element_text(
+      size = 8, 
+      margin = margin(t = 20, r = 0, b = 10, l = 0)
+    ),
+    axis.title.y.left = element_text(
+      size = 8, 
+      margin = margin(t = 0, r = 10, b = 0, l = 0),
+      angle = 0,
+      vjust = 0.5
+    ),
+    axis.title.y.right = element_text(
+      size = 8,
+      margin = margin(t = 0, r = 0, b = 0, l = 10),
+      angle = 0,
+      vjust = 0.5
+    ),
+    
+    panel.grid.minor.x = element_blank(),
+    # panel.grid.minor.y = element_blank(),
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0),
+    strip.text = element_text(size=8),
+    axis.ticks.x = element_blank(),
+    
+    panel.spacing = unit(0.8, "lines"),
+    
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0, face= "italic")
+    
+  )
+
+
+# vaccine vs unvaccinated (plot B)
 plot_vax_data <- plot_data %>%
   filter(
     comparison != "both",
@@ -367,127 +490,6 @@ plot_vax <- plot_vax_data %>%
     legend.text = element_text(size=8),
     legend.box.background = element_rect(colour = "black", fill = "white")
   ) 
-
-# scale for x-axis
-x_breaks <- seq(3, 48, 4)
-x_labels <- as.character(x_breaks)
-alpha_area <- 0.5
-# create plot
-# max_nrisk <- 1000000#max(survtable_redacted$n.risk)
-
-plot_ci_data <- survtable_redacted %>%
-  filter(
-    !(as.integer(subgroup) == 3L & arm == "BNT162b2"),
-    !(as.integer(subgroup) == 4L & arm == "ChAdOx1")
-    ) %>%
-  filter(time <= 48) %>%
-  mutate(across(subgroup,
-                factor,
-                levels = levels(survtable_redacted$subgroup),
-                labels = str_replace(str_replace(levels(survtable_redacted$subgroup), "\\n", " "), "and", "&")
-                )) %>%
-  mutate(
-    variant = factor(
-      case_when(
-        as.integer(subgroup) == 1L & time <= 1*4 ~ "alpha",
-        as.integer(subgroup) == 1L & time < 9*4 ~ "delta",
-        as.integer(subgroup) == 1L ~ "omicron",
-        as.integer(subgroup) == 2L & time < 8*4 ~ "delta",
-        as.integer(subgroup) == 2L ~ "omicron",
-        as.integer(subgroup) == 3L & time < 7*4 ~ "delta",
-        as.integer(subgroup) == 3L ~ "omicron",
-        as.integer(subgroup) == 4L & time < 4*4 ~ "delta",
-        as.integer(subgroup) == 4L ~ "omicron",
-        TRUE ~ NA_character_
-      ),
-      levels = variants
-    )
-  ) %>%
-  mutate(
-    c.inc_alphadelta = if_else(variant %in% c("alpha", "delta"), c.inc, NA_real_),
-    c.inc_omicron = if_else(variant %in% c("omicron"), c.inc, NA_real_)
-  ) %>%
-  mutate(y = str_wrap("Cumulative incidence of subsequent dose", 14))
-
-plot_ci <- plot_ci_data %>%
-  ggplot(aes(
-    x = time,
-    colour = arm
-    )) +
-  geom_line(
-    aes(y = c.inc_alphadelta),
-    linetype = "dashed",
-    ) +
-  geom_line(
-    aes(y = c.inc_omicron),
-  ) +
-  facet_grid(
-    . ~ subgroup,
-    switch = "y",
-    space = "free_x"
-    ) +
-  scale_x_continuous(
-    expand = c(0,0),
-    breaks = seq(2,50,4),
-    labels = NULL
-  ) +
-  scale_y_continuous(
-    # name = "Millions of\npeople at risk\n(shaded)",
-    name = str_wrap("Cumulative incidence of subsequent dose", 14),
-    limits = c(0,1),
-    labels = format(seq(0,1,0.25), nsmall=2),
-    oob = scales::oob_keep
-  ) +
-  scale_colour_manual(
-    name = NULL,
-    values = palette_adj,
-    guide = "none"
-  ) +
-  labs(x = NULL) +
-  theme_bw() +
-  theme(
-    
-    panel.border = element_blank(),
-    axis.line.y = element_line(colour = "black"),
-    
-    axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(
-      size=8,
-      angle = 90
-      ),
-    
-    axis.title.x = element_text(
-      size = 8, 
-      margin = margin(t = 20, r = 0, b = 10, l = 0)
-      ),
-    axis.title.y.left = element_text(
-      size = 8, 
-      margin = margin(t = 0, r = 10, b = 0, l = 0),
-      angle = 0,
-      vjust = 0.5
-      ),
-    axis.title.y.right = element_text(
-      size = 8,
-      margin = margin(t = 0, r = 0, b = 0, l = 10),
-      angle = 0,
-      vjust = 0.5
-    ),
-    
-    panel.grid.minor.x = element_blank(),
-    # panel.grid.minor.y = element_blank(),
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text.y.left = element_text(angle = 0),
-    strip.text = element_text(size=8),
-    axis.ticks.x = element_blank(),
-    
-    panel.spacing = unit(0.8, "lines"),
-    
-    plot.title.position = "plot",
-    plot.caption.position = "plot",
-    plot.caption = element_text(hjust = 0, face= "italic")
-    
-  )
 
 
 plot_combined <- plot_grid(
