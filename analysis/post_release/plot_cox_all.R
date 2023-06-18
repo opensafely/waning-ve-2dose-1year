@@ -232,6 +232,13 @@ plot_vax_data <- plot_data %>%
 
 
 plot_vax <- plot_vax_data %>%
+  # add a dummy row so that the unvaccinated line is shown on the legend
+  add_row(
+    comparison = "Unvaccinated",
+    outcome = factor(levels(plot_vax_data$outcome)[1], levels = levels(plot_vax_data$outcome)),
+    subgroup = factor(levels(plot_vax_data$subgroup)[1], levels = levels(plot_vax_data$subgroup))
+    ) %>%
+  mutate(across(comparison, factor, levels = names(palette_adj))) %>%
   ggplot(aes(
     x = k, 
     colour = comparison, 
