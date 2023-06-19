@@ -230,17 +230,51 @@ plot_ci_data <- survtable_redacted %>%
   ) %>%
   mutate(y = str_wrap("Cumulative incidence of subsequent dose", 14))
 
+# get earliest time when ci over 80%
+ci_80_time <- plot_ci_data %>%
+  arrange(subgroup, arm, time) %>%
+  filter(c.inc>0.8) %>%
+  group_by(subgroup, arm) %>%
+  slice(1) %>%
+  select(subgroup, arm, time) %>%
+  ungroup() %>%
+  mutate(
+    # plus 1 because people followed up to end of the period before excluded for subsequent dose
+    k_min = as.integer(cut(time, breaks = seq(2, (K+1)*4, 4))) + 1
+    ) %>%
+  rename(time_min = time)
+  # use distinct to avoid overlapping rectangles
+  # this is ok because the value is the same across arms
+  # distinct(subgroup, k_min, .keep_all = TRUE)
+
 plot_ci <- plot_ci_data %>%
-  ggplot(aes(
-    x = time,
-    colour = arm
-  )) +
+  # add time_min for shaded rectangles
+  bind_rows(ci_80_time) %>%
+  ggplot() +
+  geom_rect(
+    aes(
+      xmin = time_min, 
+      xmax = max(plot_ci_data$time, na.rm=TRUE),
+      ymin = 0,
+      ymax = 1
+    ), 
+    fill = "grey70",
+    alpha = 0.2
+  ) +
   geom_line(
-    aes(y = c.inc_alphadelta),
+    aes(
+      x = time,
+      colour = arm,
+      y = c.inc_alphadelta
+      ),
     linetype = "dashed",
   ) +
   geom_line(
-    aes(y = c.inc_omicron),
+    aes(
+      x = time,
+      colour = arm,
+      y = c.inc_omicron
+      ),
   ) +
   facet_grid(
     . ~ subgroup,
@@ -310,7 +344,6 @@ plot_ci <- plot_ci_data %>%
     
   )
 
-
 # vaccine vs unvaccinated (plot B)
 plot_vax_data <- plot_data %>%
   filter(
@@ -355,6 +388,26 @@ plot_vax_data <- plot_data %>%
 
 
 plot_vax <- plot_vax_data %>%
+  bind_rows(
+    plot_vax_data %>% 
+      distinct(subgroup) %>%
+      mutate(subgroup_join=as.integer(subgroup)) %>%
+      inner_join(
+        ci_80_time %>% 
+          mutate(subgroup_join = as.integer(subgroup)) %>%
+          mutate(
+            comparison = factor(
+              arm, levels = levels(plot_vax_data$comparison)
+              )
+            ) %>%
+          select(subgroup_join, comparison, k_min),
+        by = join_by(subgroup_join)
+      ) %>%
+      select(-subgroup_join) %>%
+      expand_grid(
+        outcome = levels(plot_vax_data$outcome)
+        )
+  ) %>%
   # add a dummy row so that the unvaccinated line is shown on the legend
   add_row(
     comparison = "Unvaccinated",
@@ -362,20 +415,39 @@ plot_vax <- plot_vax_data %>%
     subgroup = factor(levels(plot_vax_data$subgroup)[1], levels = levels(plot_vax_data$subgroup))
     ) %>%
   mutate(across(comparison, factor, levels = names(palette_adj))) %>%
-  ggplot(aes(
-    x = k, 
-    colour = comparison, 
-    shape = variant,
-    # alpha = variant,
-    fill = fill_group
-  )) +
-  geom_hline(aes(yintercept=1), colour='grey') +
+  ggplot() +
+  # add shaded areas where cumulative incidence of third dose over 80%
+  geom_rect(
+    aes(
+      xmin = k_min - 0.5, 
+      xmax = 12 + 0.5,
+      ymin = primary_vax_y1$limits[1],
+      ymax = 3
+      ), 
+    fill = "grey70",
+    alpha = 0.2
+  ) +
+  geom_hline(aes(yintercept=1), colour='black') +
   geom_linerange(
-    aes(ymin = conf.low, ymax = conf.high),
+    aes(
+      ymin = conf.low, ymax = conf.high,
+      x = k, 
+      colour = comparison, 
+      shape = variant,
+      # alpha = variant,
+      fill = fill_group
+      ),
     position = position_dodge(width = position_dodge_val)
   ) +
   geom_point(
-    aes(y = estimate),
+    aes(
+      y = estimate,
+      x = k, 
+      colour = comparison, 
+      shape = variant,
+      # alpha = variant,
+      fill = fill_group
+      ),
     position = position_dodge(width = position_dodge_val),
     size = 0.9
   ) +
@@ -505,7 +577,7 @@ print(caption_str)
 # save the plot
 ggsave(plot_combined,
        filename = file.path(release_folder, "images", glue("hr_vax_ci.pdf")),
-       width=9, height=6, units="in")
+       width=9.2, height=(6/9)*9.2, units="in")
 
 # ggsave(plot_vax + theme(plot.margin = margin(2, 2, 2, 2, "cm")),
 #        filename = (release_folder, "images", glue("hr_vax.pdf")),
