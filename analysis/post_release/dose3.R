@@ -5,7 +5,10 @@ subgroups <- readr::read_rds(
   here::here("analysis", "lib", "subgroups.rds"))
 subgroup_labels <- seq_along(subgroups)
 
-tidy_dose3model <- read_csv(here::here("release20230605", "tidy_dose3model.csv")) 
+release_dir <- "release20230613"
+
+### plots of categorical covariates
+tidy_dose3model <- read_csv(here::here(release_dir, "tidy_dose3model.csv")) 
 
 create_plot <- function(vars_group) {
   
@@ -127,7 +130,7 @@ create_plot <- function(vars_group) {
   
   ggsave(
     plot = p,
-    filename = here::here("release20230605", glue::glue("{vars_group}.png")),
+    filename = here::here(release_dir, glue::glue("{vars_group}.png")),
     width = 14, height = 20, units = "cm"
   )
   
@@ -139,4 +142,57 @@ create_plot <- function(vars_group) {
 create_plot("baseline")
 create_plot("historyof")
 create_plot("timeupdating")
-  
+
+
+### plots of continuous covariates
+hrs_age <- read_csv(here::here(release_dir, "hrs_age.csv")) 
+
+
+
+plot_data <- hrs_age %>%
+  # left_join(
+  #   hrs_age %>% filter(y_trans==1) %>% select(subgroup, median_age = x),
+  #   by = "subgroup"
+  # ) %>%
+  mutate(across(subgroup, ~factor(.x, levels = seq_along(subgroups), labels = subgroups))) %>%
+  group_by(subgroup) %>%
+  mutate(
+    y_max = max(y),
+    x_at_max_y = mean(if_else(y==y_max, x, NA_real_), na.rm=TRUE)
+  ) %>%
+  # mutate(min_age = min(x)) %>%
+  # mutate(y_min_age = mean(if_else(x==min_age,y,NA_real_), na.rm=TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    y_trans = y,
+    conf.ll = y-(1.96*se),
+    conf.ul = y+(1.96*se)
+  ) %>%
+  # rescale y relative to value at median_val
+  mutate(across(c(y_trans, conf.ll, conf.ul), ~exp(.x - y_max))) 
+
+
+plot_data %>%
+  ggplot(aes(x = x)) +
+  geom_hline(yintercept = 1, colour = "grey") +
+  geom_ribbon(aes(ymin = conf.ll, ymax = conf.ul, fill = subgroup), alpha = 0.2) +
+  geom_line(aes(y = y_trans, colour = subgroup)) +
+  # geom_vline(aes(xintercept = median_age, colour = subgroup), linetype = "dashed") +
+  # geom_vline(aes(xintercept = min_age, colour = subgroup), linetype = "dashed") +
+  geom_vline(aes(xintercept = x_at_max_y, colour = subgroup), linetype = "dashed") +
+  geom_label(aes(x = x_at_max_y, y = 0.6, label = x_at_max_y, colour = subgroup)) +
+  facet_wrap(facets = "subgroup", scales = "free_x") +
+  scale_y_log10() +
+  labs(x = "Age in years", y = "Hazard ratio") +
+  scale_color_discrete(guide = "none") +
+  scale_fill_discrete(guide = "none") +
+  theme_bw() +
+  theme(
+    axis.title.x = element_text(margin = margin(t=10)),
+    axis.title.y = element_text(margin = margin(r=10))
+  )
+
+ggsave(
+  filename = here::here(release_dir, "hrs_age.png"),
+  width = 14, height = 14, units = "cm"
+)
