@@ -176,7 +176,7 @@ if(Sys.getenv("OPENSAFELY_BACKEND") %in% "") {
   
   autonum <- officer::run_autonum(
     seq_id = "table",
-    pre_label = "Supplementary Table ",
+    pre_label = "Web Table ",
     post_label = ": ",
     bkm = NULL,
     bkm_all = FALSE,
