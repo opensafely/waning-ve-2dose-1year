@@ -286,15 +286,15 @@ plot_ci <- plot_ci_data %>%
     space = "free_x"
   ) +
   scale_x_continuous(
+    name = "Weeks Since Second Dose",
     expand = expansion(add = c(1, 0)),
     limits = c(3,49), # set max as 49 to align with panel B, which is plotted at midpoint in [47,50] interval, which is 49
     breaks = seq(3,50,4)#,
     # labels = NULL
   ) +
   scale_y_continuous(
-    expand = c(0,0),
-    # name = "Millions of\npeople at risk\n(shaded)",
     name = str_wrap("Cumulative Incidence of Subsequent Dose", 14),
+    expand = c(0,0),
     limits = c(0,1),
     labels = format(seq(0,1,0.25), nsmall=2),
     oob = scales::oob_keep
@@ -319,7 +319,7 @@ plot_ci <- plot_ci_data %>%
     
     axis.title.x = element_text(
       size = 8, 
-      margin = margin(t = 20, r = 0, b = 10, l = 0)
+      margin = margin(t = 5, r = 0, b = 5, l = 0)
     ),
     axis.title.y.left = element_text(
       size = 8, 
@@ -475,7 +475,7 @@ plot_vax <- plot_vax_data %>%
     # scales = "free_x",
     space = "free_x"
     ) +
-  labs(x = "Weeks Since Second Dose") +
+  labs(x = "Weeks Since Second Dose (4-week Comparison Period)") +
   scale_x_continuous(
     expand = c(0,0),
     breaks = 1:12, # scale is time since start of period 1
@@ -526,7 +526,7 @@ plot_vax <- plot_vax_data %>%
     
     axis.title.x = element_text(
       size=8, 
-      margin = margin(t = 10, r = 0, b = 0, l = 0)
+      margin = margin(t = 5, r = 0, b = 0, l = 0)
       ),
     axis.title.y = element_text(
       size = 8
@@ -564,7 +564,7 @@ plot_vax <- plot_vax_data %>%
 set_null_device(cairo_pdf)
 plot_combined <- plot_grid(
   plot_ci, plot_vax, 
-  nrow = 2, rel_heights = c(0.22,0.78),
+  nrow = 2, rel_heights = c(0.23,0.77),
   labels = c("A)", "B)"),
   label_fontface = "plain",
   label_fontfamily = "helvetica",
