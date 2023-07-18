@@ -39,11 +39,11 @@ rm(outcomes_long)
 subgroups <- readr::read_rds(
   here::here("analysis", "lib", "subgroups.rds"))
 subgroup_plot_labels <- subgroups
-subgroup_plot_labels <- if_else(
-  subgroup_plot_labels %in% c("40-64 years", "18-39 years"),
-  str_c(subgroup_plot_labels, "*"),
-  subgroup_plot_labels
-)
+# subgroup_plot_labels <- if_else(
+#   subgroup_plot_labels %in% c("40-64 years", "18-39 years"),
+#   str_c(subgroup_plot_labels, "*"),
+#   subgroup_plot_labels
+# )
 subgroup_plot_labels <- str_to_title(subgroup_plot_labels)
 subgroup_plot_labels <- str_replace_all(subgroup_plot_labels, "And", "&")
 subgroup_plot_labels <- str_replace_all(subgroup_plot_labels, "-", "\u2013")
