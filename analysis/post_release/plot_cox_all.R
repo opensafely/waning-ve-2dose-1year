@@ -28,10 +28,10 @@ outcomes <- outcomes[outcomes!="covidemergency"]
 outcomes <- outcomes[c(3,4,2,5,1)]
 outcomes_long <- names(outcomes)
 # title case (can't use str_to_title() because it makes caps in words lowercase)
-outcomes_long[outcomes=="postest"] <- "Positive Test for SARS-CoV-2"
-outcomes_long[outcomes=="covidadmitted"] <- "COVID-19 Hospitalization"
-outcomes_long[outcomes=="coviddeath"] <- "COVID-19 Death"
-outcomes_long[outcomes=="noncoviddeath"] <- "Non-COVID-19 Death"
+outcomes_long[outcomes=="postest"] <- "Positive Test for\nSARS-CoV-2"
+outcomes_long[outcomes=="covidadmitted"] <- "COVID-19\nHospitalization"
+outcomes_long[outcomes=="coviddeath"] <- "COVID-19\nDeath"
+outcomes_long[outcomes=="noncoviddeath"] <- "Non-COVID-19\nDeath"
 names(outcomes) <- outcomes_long
 rm(outcomes_long)
 
@@ -164,7 +164,8 @@ plot_data <- estimates_all %>%
   mutate(across(outcome,
                 factor,
                 levels = unname(outcomes),
-                labels = str_wrap(names(outcomes), 17)
+                # labels = str_wrap(names(outcomes), 17)
+                labels = names(outcomes)
   )) %>%
   mutate(across(subgroup,
                 factor,
@@ -251,106 +252,107 @@ ci_80_time <- plot_ci_data %>%
   # this is ok because the value is the same across arms
   # distinct(subgroup, k_min, .keep_all = TRUE)
 
-plot_ci <- plot_ci_data %>%
-  # add time_min for shaded rectangles
-  bind_rows(ci_80_time) %>%
-  ggplot() +
-  geom_rect(
-    aes(
-      xmin = time_min, 
-      xmax = 49,
-      ymin = 0,
-      ymax = 1
-    ), 
-    fill = "grey70",
-    alpha = 0.2
-  ) +
-  geom_line(
-    aes(
-      x = time,
-      colour = arm,
-      y = c.inc_alphadelta
+plot_ci_fun <- function(plot_subgroups = 1:4, text_size) {
+  plot_ci_data %>%
+    # add time_min for shaded rectangles
+    bind_rows(ci_80_time) %>%
+    filter(as.integer(subgroup) %in% plot_subgroups) %>%
+    ggplot() +
+    geom_rect(
+      aes(
+        xmin = time_min, 
+        xmax = 49,
+        ymin = 0,
+        ymax = 1
+      ), 
+      fill = "grey70",
+      alpha = 0.2
+    ) +
+    geom_line(
+      aes(
+        x = time,
+        colour = arm,
+        y = c.inc_alphadelta
       ),
-    linetype = "dashed",
-  ) +
-  geom_line(
-    aes(
-      x = time,
-      colour = arm,
-      y = c.inc_omicron
+      linetype = "dashed",
+    ) +
+    geom_line(
+      aes(
+        x = time,
+        colour = arm,
+        y = c.inc_omicron
       ),
-  ) +
-  facet_grid(
-    . ~ subgroup,
-    switch = "y",
-    space = "free_x"
-  ) +
-  scale_x_continuous(
-    name = "Weeks Since Second Dose",
-    expand = expansion(add = c(1, 0)),
-    limits = c(3,49), # set max as 49 to align with panel B, which is plotted at midpoint in [47,50] interval, which is 49
-    breaks = seq(3,50,4)#,
-    # labels = NULL
-  ) +
-  scale_y_continuous(
-    name = str_wrap("Cumulative Incidence of Subsequent Dose", 14),
-    expand = c(0,0),
-    limits = c(0,1),
-    labels = format(seq(0,1,0.25), nsmall=2),
-    oob = scales::oob_keep
-  ) +
-  scale_colour_manual(
-    name = NULL,
-    values = palette_adj,
-    guide = "none"
-  ) +
-  labs(x = NULL) +
-  theme_bw(base_family = "helvetica") +
-  theme(
-    
-    axis.line = element_blank(),
-    # axis.line = element_line(colour = "black", linewidth = 0.35), # 0.35mm ~= 1pt
-    
-    axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(
-      size=8,
-      angle = 45
-    ),
-    
-    axis.title.x = element_text(
-      size = 8, 
-      margin = margin(t = 5, r = 0, b = 5, l = 0)
-    ),
-    axis.title.y.left = element_text(
-      size = 8, 
-      margin = margin(t = 0, r = 10, b = 0, l = 0),
-      angle = 90,
-      vjust = 0.5
-    ),
-    axis.title.y.right = element_text(
-      size = 8,
-      margin = margin(t = 0, r = 0, b = 0, l = 10),
-      angle = 0,
-      vjust = 0.5
-    ),
-    
-    axis.ticks = element_line(linewidth = 0.35),
-    
-    panel.border = element_rect(linewidth = 0.35, colour = "black"),
-    panel.grid = element_blank(),
-    panel.spacing = unit(0.8, "lines"),
-    
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text.y.left = element_text(angle = 0),
-    strip.text = element_text(size=8),
-    
-    plot.title.position = "plot",
-    plot.caption.position = "plot",
-    plot.caption = element_text(hjust = 0, face= "italic"),
-    plot.margin = margin(l = 20, t = 5, r = 5, b = 5),
-    
-  )
+    ) +
+    facet_grid(
+      . ~ subgroup,
+      switch = "y",
+      space = "free_x"
+    ) +
+    scale_x_continuous(
+      name = "Weeks Since Second Dose",
+      expand = expansion(add = c(1, 0)),
+      limits = c(3,49), # set max as 49 to align with panel B, which is plotted at midpoint in [47,50] interval, which is 49
+      breaks = seq(3,50,4)#,
+      # labels = NULL
+    ) +
+    scale_y_continuous(
+      name = str_wrap("Incidence of Subsequent Dose", 14),
+      expand = c(0,0),
+      limits = c(0,1),
+      labels = format(seq(0,1,0.25), nsmall=2),
+      oob = scales::oob_keep
+    ) +
+    scale_colour_manual(
+      name = NULL,
+      values = palette_adj,
+      guide = "none"
+    ) +
+    labs(x = NULL) +
+    theme_bw(base_family = "helvetica") +
+    theme(
+      axis.line = element_blank(),
+      
+      axis.text.y = element_text(size = text_size),
+      axis.text.x = element_text(size = text_size, angle = 45),
+      
+      axis.title.x = element_text(
+        size = text_size, 
+        margin = margin(t = 5, r = 0, b = 5, l = 0)
+      ),
+      axis.title.y.left = element_text(
+        size = text_size, 
+        margin = margin(t = 0, r = 10, b = 0, l = 0),
+        angle = 90,
+        vjust = 0.5
+      ),
+      axis.title.y.right = element_text(
+        size = text_size,
+        margin = margin(t = 0, r = 0, b = 0, l = 10),
+        angle = 0,
+        vjust = 0.5
+      ),
+      
+      axis.ticks = element_line(linewidth = 0.35),
+      
+      panel.border = element_rect(linewidth = 0.35, colour = "black"),
+      panel.grid = element_blank(),
+      panel.spacing = unit(0.8, "lines"),
+      
+      strip.background = element_blank(),
+      strip.placement = "outside",
+      strip.text.y.left = element_text(angle = 0),
+      strip.text = element_text(size = text_size),
+      
+      plot.title.position = "plot",
+      plot.caption.position = "plot",
+      plot.caption = element_text(hjust = 0, face= "italic"),
+      plot.margin = margin(l = 20, t = 5, r = 5, b = 5),
+    )
+}
+
+# plot_ci_fun()
+# plot_ci_fun(plot_subgroups = 1:2)
+# plot_ci_fun(plot_subgroups = 3:4)
 
 # vaccine vs unvaccinated (plot B)
 plot_vax_data <- plot_data %>%
@@ -399,184 +401,214 @@ plot_vax_data <- plot_data %>%
   ) 
 
 
-plot_vax <- plot_vax_data %>%
-  bind_rows(
-    plot_vax_data %>% 
-      distinct(subgroup) %>%
-      mutate(subgroup_join=as.integer(subgroup)) %>%
-      inner_join(
-        ci_80_time %>% 
-          mutate(subgroup_join = as.integer(subgroup)) %>%
-          mutate(
-            comparison = factor(
-              arm, levels = levels(plot_vax_data$comparison)
+plot_vax_fun <- function(plot_subgroups = 1:4, text_size) {
+  if (all(1:4 %in% plot_subgroups)) {
+    legend_position <- c(0.875, 0.63)
+    hline <- function(p, ...) {
+      p + geom_hline(aes(yintercept = 1), ...)
+    }
+  } else {
+    legend_position <- "none"
+    hline <- function(p, ...) {
+      p + geom_hline(yintercept = 1, ...)
+    }
+  } 
+  p <- plot_vax_data %>%
+    bind_rows(
+      plot_vax_data %>% 
+        distinct(subgroup) %>%
+        mutate(subgroup_join=as.integer(subgroup)) %>%
+        inner_join(
+          ci_80_time %>% 
+            mutate(subgroup_join = as.integer(subgroup)) %>%
+            mutate(
+              comparison = factor(
+                arm, levels = levels(plot_vax_data$comparison)
               )
             ) %>%
-          select(subgroup_join, comparison, k_min),
-        by = join_by(subgroup_join)
-      ) %>%
-      select(-subgroup_join) %>%
-      expand_grid(
-        outcome = levels(plot_vax_data$outcome)
+            select(subgroup_join, comparison, k_min),
+          by = join_by(subgroup_join)
+        ) %>%
+        select(-subgroup_join) %>%
+        expand_grid(
+          outcome = factor(levels(plot_vax_data$outcome))
         )
-  ) %>%
-  # add a dummy row so that the unvaccinated line is shown on the legend
-  add_row(
-    comparison = "Unvaccinated",
-    outcome = factor(levels(plot_vax_data$outcome)[1], levels = levels(plot_vax_data$outcome)),
-    subgroup = factor(levels(plot_vax_data$subgroup)[1], levels = levels(plot_vax_data$subgroup))
     ) %>%
-  mutate(across(comparison, factor, levels = names(palette_adj))) %>%
-  ggplot() +
-  # add shaded areas where cumulative incidence of third dose over 80%
-  geom_rect(
-    aes(
-      xmin = k_min - 0.5, 
-      xmax = 12 + 0.5,
-      ymin = primary_vax_y1$limits[1],
-      ymax = primary_vax_y1$limits[2]
+    # add a dummy row so that the unvaccinated line is shown on the legend
+    add_row(
+      comparison = "Unvaccinated",
+      outcome = factor(levels(plot_vax_data$outcome)[1], levels = levels(plot_vax_data$outcome)),
+      subgroup = factor(levels(plot_vax_data$subgroup)[1], levels = levels(plot_vax_data$subgroup))
+    ) %>%
+    mutate(across(comparison, factor, levels = names(palette_adj))) %>%
+    filter(as.integer(subgroup) %in% plot_subgroups) %>%
+    ggplot() +
+    # add shaded areas where cumulative incidence of third dose over 80%
+    geom_rect(
+      aes(
+        xmin = k_min - 0.5, 
+        xmax = 12 + 0.5,
+        ymin = primary_vax_y1$limits[1],
+        ymax = primary_vax_y1$limits[2]
       ), 
-    fill = "grey70",
-    alpha = 0.2
-  ) +
-  geom_hline(
-    aes(yintercept=1),
-    colour='black', linetype = "dashed", linewidth = 0.35
+      fill = "grey70",
+      alpha = 0.2
+    ) 
+  
+  hline(p, colour='black', linetype = "dashed", linewidth = 0.35) +
+    geom_linerange(
+      aes(
+        ymin = conf.low, ymax = conf.high,
+        x = k, 
+        colour = comparison, 
+        shape = variant,
+        # alpha = variant,
+        fill = fill_group
+      ),
+      position = position_dodge(width = position_dodge_val)
     ) +
-  geom_linerange(
-    aes(
-      ymin = conf.low, ymax = conf.high,
-      x = k, 
-      colour = comparison, 
-      shape = variant,
-      # alpha = variant,
-      fill = fill_group
+    geom_point(
+      aes(
+        y = estimate,
+        x = k, 
+        colour = comparison, 
+        shape = variant,
+        # alpha = variant,
+        fill = fill_group
       ),
-    position = position_dodge(width = position_dodge_val)
-  ) +
-  geom_point(
-    aes(
-      y = estimate,
-      x = k, 
-      colour = comparison, 
-      shape = variant,
-      # alpha = variant,
-      fill = fill_group
-      ),
-    position = position_dodge(width = position_dodge_val),
-    size = 0.9,
-    shape = 21
-  ) +
-  # lemon::facet_rep_grid(
+      position = position_dodge(width = position_dodge_val),
+      size = 0.9,
+      shape = 21
+    ) +
+    # lemon::facet_rep_grid(
     # repeat.tick.labels = TRUE,
-  facet_grid(
-    outcome ~ subgroup, 
-    switch = "y",
-    # scales = "free_x",
-    space = "free_x"
+    facet_grid(
+      outcome ~ subgroup, 
+      switch = "y",
+      # scales = "free_x",
+      space = "free_x"
     ) +
-  labs(x = "Weeks Since Second Dose (4-week Comparison Period)") +
-  scale_x_continuous(
-    expand = c(0,0),
-    breaks = 1:12, # scale is time since start of period 1
-    labels = weeks_since_2nd_vax # label scale as time since second vax
-  ) +
-  scale_y_log10(
-    expand = c(0,0),
-    # expand = expansion(mult = c(0,0.05)),
-    name = "Hazard Ratio",
-    breaks = primary_vax_y1[["breaks"]],
-    limits = primary_vax_y1[["limits"]],
-    oob = scales::oob_keep
-  ) +
-  scale_fill_discrete(guide = "none") +
-  scale_color_manual(
-    values = palette_adj,
-    labels = names(palette_adj),
-    drop = FALSE,
-    name = NULL,
-    guide = "none"
+    labs(x = "Weeks Since Second Dose (4-week Comparison Period)") +
+    scale_x_continuous(
+      expand = c(0,0),
+      breaks = 1:12, # scale is time since start of period 1
+      labels = weeks_since_2nd_vax # label scale as time since second vax
     ) +
-  scale_fill_manual(
-    values = palette_fill, 
-    name = NULL,
-    guide = "none"
-  ) +
-  scale_linetype_manual(
-    values = c("dashed", "solid"), 
-    name = NULL, 
-    guide = "none"
+    scale_y_log10(
+      expand = c(0,0),
+      # expand = expansion(mult = c(0,0.05)),
+      name = "Hazard Ratio",
+      breaks = primary_vax_y1[["breaks"]],
+      limits = primary_vax_y1[["limits"]],
+      oob = scales::oob_keep
     ) +
-  guides(
-    colour = guide_legend(
-      title = expression(underline(Vaccination~Group)),
-      ncol = 1,
-      byrow = TRUE,
-      override.aes = list(
-        shape = NA,
-        size = 3
+    scale_fill_discrete(guide = "none") +
+    scale_color_manual(
+      values = palette_adj,
+      labels = names(palette_adj),
+      drop = FALSE,
+      name = NULL,
+      guide = "none"
+    ) +
+    scale_fill_manual(
+      values = palette_fill, 
+      name = NULL,
+      guide = "none"
+    ) +
+    scale_linetype_manual(
+      values = c("dashed", "solid"), 
+      name = NULL, 
+      guide = "none"
+    ) +
+    guides(
+      colour = guide_legend(
+        title = expression(underline(Vaccination~Group)),
+        ncol = 1,
+        byrow = TRUE,
+        override.aes = list(
+          shape = NA,
+          size = 3
+        )
       )
-    )
     ) +
-  theme_bw(base_family = "helvetica") +
-  theme(
-    
-    axis.line = element_blank(),
-    # axis.line = element_line(colour = "black", linewidth = 0.35), # 0.35mm ~= 1pt
-    
-    axis.title.x = element_text(
-      size=8, 
-      margin = margin(t = 5, r = 0, b = 0, l = 0)
+    theme_bw(base_family = "helvetica") +
+    theme(
+      axis.line = element_blank(),
+      # axis.line = element_line(colour = "black", linewidth = 0.35), # 0.35mm ~= 1pt
+      
+      axis.title.x = element_text(
+        size = text_size, 
+        margin = margin(t = 5, r = 0, b = 0, l = 0)
       ),
-    axis.title.y = element_text(
-      size = 8
+      axis.title.y = element_text(
+        size = text_size
       ),
-    
-    axis.text.x = element_text(size=8, angle=45, hjust=1),
-    axis.text.y = element_text(size=8),
-    axis.ticks = element_line(linewidth = 0.35),
-    
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text.x = element_blank(),
-    strip.text.y.left = element_text(angle = 90),
-    strip.text = element_text(size=8),
-    
-    panel.border = element_rect(linewidth = 0.35, colour = "black"),
-    panel.grid = element_blank(),
-    panel.spacing = unit(0.8, "lines"),
-    
-    plot.title = element_text(hjust = 0),
-    plot.title.position = "plot",
-    plot.caption.position = "plot",
-    plot.caption = element_text(hjust = 0, face= "italic"),
-    plot.margin = margin(l = 20, t = 10, r = 5, b = 5),
-    
-    legend.position = c(0.875, 0.63),
-    legend.spacing.y = unit(0.1, "cm"),
-    legend.key.size = unit(0.3, "cm"),
-    legend.title = element_text(size=8),
-    legend.text = element_text(size=8)
-    # legend.background = element_rect(linetype = 1, linewidth = 0.35, colour = "black"),
-    
-  ) 
+      
+      axis.text.x = element_text(size = text_size, angle = 45, hjust = 1),
+      axis.text.y = element_text(size = text_size),
+      axis.ticks = element_line(linewidth = 0.35),
+      
+      strip.background = element_blank(),
+      strip.placement = "outside",
+      strip.text.x = element_blank(),
+      strip.text.y.left = element_text(angle = 90),
+      strip.text = element_text(size = text_size),
+      
+      panel.border = element_rect(linewidth = 0.35, colour = "black"),
+      panel.grid = element_blank(),
+      panel.spacing = unit(0.8, "lines"),
+      
+      plot.title = element_text(hjust = 0),
+      plot.title.position = "plot",
+      plot.caption.position = "plot",
+      plot.caption = element_text(hjust = 0, face= "italic"),
+      plot.margin = margin(l = 20, t = 10, r = 5, b = 5),
+      
+      legend.position = legend_position,
+      legend.spacing.y = unit(0.1, "cm"),
+      legend.key.size = unit(0.3, "cm"),
+      legend.title = element_text(size = text_size),
+      legend.text = element_text(size = text_size)
+    ) 
+}
 
-set_null_device(cairo_pdf)
-plot_combined <- plot_grid(
-  plot_ci, plot_vax, 
-  nrow = 2, rel_heights = c(0.23,0.77),
-  labels = c("A)", "B)"),
-  label_fontface = "plain",
-  label_fontfamily = "helvetica",
-  label_size = 8,
-  align="v", axis = c("lr")
-)
+# plot_vax_fun()
+# plot_vax_fun(1:2)
+# plot_vax_fun(3:4)
+
+plot_combined_fun <- function(plot_subgroups=1:4) {
+  if (all(1:4 %in% plot_subgroups)) {
+    filename_suffix <- "all"
+    text_size <- 8
+    plot_height <- 6; plot_width <- 9
+  } else {
+    filename_suffix <- str_c(plot_subgroups, collapse = "")
+    text_size <- 10
+    plot_height <- 7; plot_width <- 6
+  }
+  set_null_device(cairo_pdf)
+  plot_combined <- plot_grid(
+    plot_ci_fun(plot_subgroups, text_size), 
+    plot_vax_fun(plot_subgroups, text_size), 
+    nrow = 2, rel_heights = c(0.23,0.77),
+    labels = c("A)", "B)"),
+    label_fontface = "plain",
+    label_fontfamily = "helvetica",
+    label_size = text_size,
+    align="v", axis = c("lr")
+  )
+  # save the plot
+  ggsave(plot_combined,
+         filename = file.path(release_folder, "images", glue("hr_vax_ci_{filename_suffix}.pdf")),
+         device = cairo_pdf,
+         width=plot_width, height=plot_height, units="in"
+  )
+}
+
+plot_combined_fun()
+plot_combined_fun(1:2)
+plot_combined_fun(3:4)
 
 print(caption_str)
 
-# save the plot
-ggsave(plot_combined,
-       filename = file.path(release_folder, "images", glue("hr_vax_ci.pdf")),
-       device = cairo_pdf,
-       width=9, height=6, units="in"
-       )
+
